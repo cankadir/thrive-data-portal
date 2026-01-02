@@ -1,0 +1,893 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Thrive Network Map</title>
+		<style>
+			html,
+			body {
+				height: 100%;
+				width: 100%;
+				margin: 0;
+			}
+			:root {
+				color-scheme: light;
+			}
+			body {
+				font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+				line-height: 1.35;
+				overflow: hidden; /* prevent page scrollbars */
+				display: flex;
+				flex-direction: column;
+			}
+			header {
+				padding: 14px 16px;
+				border-bottom: 1px solid #e5e7eb;
+				flex: 0 0 auto;
+			}
+			h1 {
+				margin: 0;
+				font-size: 18px;
+				font-weight: 650;
+			}
+			.subtle {
+				margin-top: 6px;
+				color: #4b5563;
+				font-size: 12px;
+			}
+			.layout {
+				display: grid;
+				grid-template-columns: 360px 1fr;
+				flex: 1 1 auto;
+				min-height: 0; /* allow children to size/scroll correctly */
+			}
+			aside {
+				border-right: 1px solid #e5e7eb;
+				padding: 12px;
+				overflow: hidden; /* keep scrolling confined to the network area */
+			}
+			main {
+				position: relative;
+				overflow: auto; /* only scrolling area */
+				min-height: 0;
+			}
+			.panel {
+				border: 1px solid #e5e7eb;
+				border-radius: 10px;
+				padding: 10px;
+				margin-bottom: 12px;
+			}
+			.panel h2 {
+				margin: 0 0 8px;
+				font-size: 13px;
+				font-weight: 650;
+				color: #111827;
+			}
+			.btn {
+				appearance: none;
+				border: 1px solid #d1d5db;
+				background: #ffffff;
+				color: #111827;
+				border-radius: 8px;
+				padding: 6px 10px;
+				font-size: 12px;
+				cursor: pointer;
+				user-select: none;
+			}
+			.btn:hover {
+				background: #f9fafb;
+			}
+			.btn:active {
+				background: #f3f4f6;
+			}
+			.btn:disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+			}
+			.btnRow {
+				display: flex;
+				gap: 8px;
+				flex-wrap: wrap;
+			}
+			.row {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 8px;
+				padding: 8px;
+				border: 1px solid #e5e7eb;
+				border-radius: 10px;
+				margin-bottom: 8px;
+				background: #ffffff;
+			}
+			.row[draggable="true"] {
+				cursor: grab;
+			}
+			.row.dragging {
+				opacity: 0.6;
+			}
+			.row.dropTarget {
+				outline: 2px dashed #9ca3af;
+				outline-offset: 2px;
+			}
+			.rowLabel {
+				display: flex;
+				flex-direction: column;
+				gap: 2px;
+				min-width: 0;
+			}
+			.rowLabel strong {
+				font-size: 12px;
+				color: #111827;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+			.rowLabel span {
+				font-size: 11px;
+				color: #6b7280;
+			}
+			.rowActions {
+				display: flex;
+				gap: 6px;
+				flex-shrink: 0;
+			}
+			#status {
+				margin-top: 8px;
+				font-size: 12px;
+				color: #374151;
+			}
+			#chart {
+				width: 100%;
+				height: 100%;
+				min-height: 100%;
+			}
+			.hint {
+				position: absolute;
+				left: 12px;
+				bottom: 10px;
+				background: rgba(255, 255, 255, 0.9);
+				border: 1px solid #e5e7eb;
+				border-radius: 10px;
+				padding: 8px 10px;
+				font-size: 12px;
+				color: #374151;
+			}
+
+			/* D3 */
+			.link {
+				fill: none;
+				stroke: #cbd5e1;
+				stroke-width: 1.25px;
+			}
+			.node circle {
+				fill: #ffffff;
+				stroke: #111827;
+				stroke-width: 1.25px;
+			}
+			.node text {
+				font-size: 12px;
+				fill: #111827;
+			}
+			.node .toggle {
+				font-size: 12px;
+				font-weight: 700;
+				fill: #111827;
+				user-select: none;
+			}
+			.node .toggleBg {
+				fill: #f3f4f6;
+				stroke: #d1d5db;
+				stroke-width: 1px;
+			}
+			.node .toggle:hover {
+				fill: #111827;
+			}
+			@media (max-width: 900px) {
+				.layout {
+					grid-template-columns: 1fr;
+				}
+				aside {
+					border-right: none;
+					border-bottom: 1px solid #e5e7eb;
+				}
+				main {
+					min-height: 60vh;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<header>
+			<h1>Thrive Network Map (Hierarchy)</h1>
+			<div class="subtle">
+				Choose which columns define the hierarchy levels (and their order). The tree always starts from a single root and
+				splits by the 1st selected column, then 2nd, then 3rd...
+			</div>
+			<div class="subtle">
+				Click on the organization node to open the last level.
+			</div>
+		</header>
+
+		<div class="layout">
+			<aside>
+				<div class="panel">
+					<h2>Hierarchy levels (left → right)</h2>
+					<div id="selectedLevels"></div>
+					<div class="btnRow">
+						<button class="btn" id="btnClear" type="button">Clear</button>
+						<button class="btn" id="btnReset" type="button">Reset</button>
+					</div>
+					<div id="status"></div>
+				</div>
+
+				<div class="panel">
+					<h2>Available columns</h2>
+					<div class="btnRow" id="availableFields"></div>
+				</div>
+			</aside>
+
+			<main>
+				<div id="chart"></div>
+				<div class="hint">Pan/zoom: scroll + drag. Toggle: click a node.</div>
+			</main>
+		</div>
+
+		<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+		<script>
+			const DEFAULT_LEVELS_DISPLAY = ["Sector", "Thrive Group", "Tags", "Organization"]; // initial hierarchy
+
+			const state = {
+				data: [],
+				fields: [],
+				selectedLevels: [],
+				builtHierarchy: null,
+			};
+
+			const el = {
+				status: document.getElementById("status"),
+				selectedLevels: document.getElementById("selectedLevels"),
+				availableFields: document.getElementById("availableFields"),
+				btnClear: document.getElementById("btnClear"),
+				btnReset: document.getElementById("btnReset"),
+				chart: document.getElementById("chart"),
+			};
+
+			function setStatus(text) {
+				el.status.textContent = text;
+			}
+
+			function displayFieldName(key) {
+				// Some keys in the JSON appear to have trailing spaces (e.g. "Sector ").
+				return typeof key === "string" ? key.trim() : String(key);
+			}
+
+			function resolveFieldKeyByDisplayName(fields, desiredDisplayName) {
+				const target = (desiredDisplayName ?? "").trim();
+				if (!target) return null;
+				// Prefer exact key match first
+				const exact = fields.find((k) => k === desiredDisplayName);
+				if (exact) return exact;
+				// Then match by trimmed display name (handles keys like "Sector ")
+				const byDisplay = fields.find((k) => displayFieldName(k) === target);
+				return byDisplay ?? null;
+			}
+
+			function inferFields(data) {
+				const set = new Set();
+				for (const row of data.slice(0, 300)) {
+					if (!row || typeof row !== "object") continue;
+					for (const k of Object.keys(row)) set.add(k);
+				}
+				return [...set].sort((a, b) => displayFieldName(a).localeCompare(displayFieldName(b)));
+			}
+
+			function normalizeValue(v) {
+				if (v === null || v === undefined) return "(blank)";
+				if (typeof v === "string") {
+					const t = v.trim();
+					return t.length ? t : "(blank)";
+				}
+				return String(v);
+			}
+
+			function valuesForField(row, key) {
+				const v = row?.[key];
+				if (Array.isArray(v)) {
+					const cleaned = v
+						.map(normalizeValue)
+						.filter((x) => x !== "(blank)")
+						.filter((x) => x.length);
+					const unique = [...new Set(cleaned)];
+					return unique.length ? unique : ["(blank)"];
+				}
+				return [normalizeValue(v)];
+			}
+
+			function createNode(name) {
+				return { name, count: 0, _childMap: new Map(), children: null, _id: null };
+			}
+
+			function finalizeTree(node, nextId) {
+				node._id = nextId.value++;
+				const children = [...node._childMap.values()];
+				node._childMap = null;
+				node.children = children.length ? children : null;
+				if (node.children) {
+					for (const c of node.children) finalizeTree(c, nextId);
+					// Sort with (blank) always at top, then by count desc, then name asc
+					const isBlank = (n) => n?.name === "(blank)";
+					node.children.sort((a, b) => {
+						if (isBlank(a) && !isBlank(b)) return -1;
+						if (!isBlank(a) && isBlank(b)) return 1;
+						return (b.count - a.count) || a.name.localeCompare(b.name);
+					});
+				}
+			}
+
+			function buildHierarchy(data, levels) {
+				const root = createNode("All");
+				const fullNameForRow = (row) => {
+					const first = (row?.Name ?? "").toString().trim();
+					const last = (row?.LastName ?? "").toString().trim();
+					const full = `${first} ${last}`.trim();
+					return full || "(blank)";
+				};
+				for (const row of data) {
+					// When a level is an array (e.g., Tags), a single record can expand into multiple paths.
+					// Counts should reflect *unique records* per node, not number of expanded paths.
+					const visitedNodesForRecord = new Set();
+					const touch = (node) => {
+						if (!visitedNodesForRecord.has(node)) {
+							visitedNodesForRecord.add(node);
+							node.count += 1;
+						}
+					};
+
+					// Build all paths for this row (arrays like Tags create multiple branches)
+					let paths = [[]];
+					for (const levelKey of levels) {
+						let values = valuesForField(row, levelKey);
+						// Special case: when Organization is blank, label it with the person's name.
+						// This avoids a massive "(blank)" Organization bucket.
+						if (displayFieldName(levelKey) === "Organization") {
+							values = values.map((v) => (v === "(blank)" ? fullNameForRow(row) : v));
+						}
+						const nextPaths = [];
+						for (const p of paths) {
+							for (const value of values) {
+								nextPaths.push([...p, value]);
+							}
+						}
+						paths = nextPaths;
+					}
+
+					for (const path of paths) {
+						let node = root;
+						touch(node);
+						for (const seg of path) {
+							const key = seg;
+							let child = node._childMap.get(key);
+							if (!child) {
+								child = createNode(key);
+								node._childMap.set(key, child);
+							}
+							touch(child);
+							node = child;
+						}
+					}
+				}
+
+				finalizeTree(root, { value: 1 });
+				return root;
+			}
+
+			// --- UI ---
+			function renderAvailableFields() {
+				el.availableFields.innerHTML = "";
+				for (const field of state.fields) {
+					const btn = document.createElement("button");
+					btn.type = "button";
+					btn.className = "btn";
+					btn.textContent = `Add: ${displayFieldName(field)}`;
+					btn.disabled = state.selectedLevels.includes(field);
+					btn.addEventListener("click", () => {
+						if (!state.selectedLevels.includes(field)) {
+							state.selectedLevels.push(field);
+							syncUIAndRender();
+						}
+					});
+					el.availableFields.appendChild(btn);
+				}
+			}
+
+			function renderSelectedLevels() {
+				el.selectedLevels.innerHTML = "";
+
+				if (!state.selectedLevels.length) {
+					const empty = document.createElement("div");
+					empty.className = "subtle";
+					empty.textContent = "No levels selected. Add one or more columns below.";
+					el.selectedLevels.appendChild(empty);
+					return;
+				}
+
+				state.selectedLevels.forEach((field, idx) => {
+					const row = document.createElement("div");
+					row.className = "row";
+					row.draggable = true;
+					row.dataset.field = field;
+
+					const label = document.createElement("div");
+					label.className = "rowLabel";
+					const strong = document.createElement("strong");
+					strong.textContent = displayFieldName(field);
+					const small = document.createElement("span");
+					small.textContent = `Level ${idx + 1}`;
+					label.appendChild(strong);
+					label.appendChild(small);
+
+					const actions = document.createElement("div");
+					actions.className = "rowActions";
+
+					const up = document.createElement("button");
+					up.type = "button";
+					up.className = "btn";
+					up.textContent = "↑";
+					up.disabled = idx === 0;
+					up.addEventListener("click", () => {
+						const tmp = state.selectedLevels[idx - 1];
+						state.selectedLevels[idx - 1] = state.selectedLevels[idx];
+						state.selectedLevels[idx] = tmp;
+						syncUIAndRender();
+					});
+
+					const down = document.createElement("button");
+					down.type = "button";
+					down.className = "btn";
+					down.textContent = "↓";
+					down.disabled = idx === state.selectedLevels.length - 1;
+					down.addEventListener("click", () => {
+						const tmp = state.selectedLevels[idx + 1];
+						state.selectedLevels[idx + 1] = state.selectedLevels[idx];
+						state.selectedLevels[idx] = tmp;
+						syncUIAndRender();
+					});
+
+					const remove = document.createElement("button");
+					remove.type = "button";
+					remove.className = "btn";
+					remove.textContent = "Remove";
+					remove.addEventListener("click", () => {
+						state.selectedLevels = state.selectedLevels.filter((x) => x !== field);
+						syncUIAndRender();
+					});
+
+					actions.appendChild(up);
+					actions.appendChild(down);
+					actions.appendChild(remove);
+
+					row.appendChild(label);
+					row.appendChild(actions);
+					el.selectedLevels.appendChild(row);
+
+					// Drag & drop reordering
+					row.addEventListener("dragstart", (e) => {
+						row.classList.add("dragging");
+						try {
+							e.dataTransfer.effectAllowed = "move";
+							e.dataTransfer.setData("text/plain", field);
+						} catch {
+							// Some browsers can throw if drag is blocked; ignore.
+						}
+					});
+					row.addEventListener("dragend", () => {
+						row.classList.remove("dragging");
+						// Clear any dropTarget highlights
+						for (const child of el.selectedLevels.querySelectorAll(".row.dropTarget")) {
+							child.classList.remove("dropTarget");
+						}
+					});
+					row.addEventListener("dragenter", (e) => {
+						e.preventDefault();
+						row.classList.add("dropTarget");
+					});
+					row.addEventListener("dragleave", () => {
+						row.classList.remove("dropTarget");
+					});
+					row.addEventListener("dragover", (e) => {
+						e.preventDefault();
+						try {
+							e.dataTransfer.dropEffect = "move";
+						} catch {
+							// ignore
+						}
+					});
+					row.addEventListener("drop", (e) => {
+						e.preventDefault();
+						row.classList.remove("dropTarget");
+
+						let draggedField = null;
+						try {
+							draggedField = e.dataTransfer.getData("text/plain");
+						} catch {
+							draggedField = null;
+						}
+						if (!draggedField) return;
+						if (draggedField === field) return;
+
+						const fromIndex = state.selectedLevels.indexOf(draggedField);
+						const toIndex = state.selectedLevels.indexOf(field);
+						if (fromIndex === -1 || toIndex === -1) return;
+
+						const next = state.selectedLevels.slice();
+						const [moved] = next.splice(fromIndex, 1);
+						next.splice(toIndex, 0, moved);
+						state.selectedLevels = next;
+						syncUIAndRender();
+					});
+				});
+			}
+
+			el.btnClear.addEventListener("click", () => {
+				state.selectedLevels = [];
+				syncUIAndRender();
+			});
+			el.btnReset.addEventListener("click", () => {
+				const set = new Set(state.fields);
+				state.selectedLevels = DEFAULT_LEVELS_DISPLAY
+					.map((d) => resolveFieldKeyByDisplayName(state.fields, d))
+					.filter((k) => k && set.has(k));
+				if (!state.selectedLevels.length && state.fields.length) {
+					// Fallback: first 3 fields
+					state.selectedLevels = state.fields.slice(0, 3);
+				}
+				syncUIAndRender();
+			});
+
+			function syncUIAndRender() {
+				renderSelectedLevels();
+				renderAvailableFields();
+				renderChart();
+			}
+
+			// --- D3 chart ---
+			let svg, g, linkGroup, nodeGroup, zoom;
+			function initChart() {
+				el.chart.innerHTML = "";
+				const rect = el.chart.getBoundingClientRect();
+				const width = Math.max(800, Math.floor(rect.width || 1000));
+				const height = Math.max(520, Math.floor(rect.height || 700));
+
+				svg = d3
+					.select("#chart")
+					.append("svg")
+					.attr("width", width)
+					.attr("height", height)
+					.attr("viewBox", [0, 0, width, height])
+					.style("display", "block");
+
+				g = svg.append("g");
+				linkGroup = g.append("g").attr("class", "links");
+				nodeGroup = g.append("g").attr("class", "nodes");
+
+				zoom = d3
+					.zoom()
+					.scaleExtent([0.25, 2.5])
+					.on("zoom", (event) => {
+						g.attr("transform", event.transform);
+					});
+				svg.call(zoom);
+			}
+
+			function collapseFromDepth(node, depthToKeep) {
+				if (!node.children) return;
+				if (node.depth >= depthToKeep) {
+					node._children = node.children;
+					node.children = null;
+					return;
+				}
+				node.children.forEach((c) => collapseFromDepth(c, depthToKeep));
+			}
+
+			function collapseChildrenAtDepth(node, parentDepth) {
+				// Keeps nodes up to parentDepth expanded, but collapses their children.
+				if (!node.children) return;
+				if (node.depth === parentDepth) {
+					node._children = node.children;
+					node.children = null;
+					return;
+				}
+				node.children.forEach((c) => collapseChildrenAtDepth(c, parentDepth));
+			}
+
+			function renderChart() {
+				if (!svg) initChart();
+
+				nodeGroup.selectAll("*").remove();
+				linkGroup.selectAll("*").remove();
+
+				if (!state.data.length) {
+					setStatus("Loading data...");
+					return;
+				}
+				if (!state.selectedLevels.length) {
+					setStatus("Pick at least 1 column to build the hierarchy.");
+					return;
+				}
+
+				setStatus(`Records: ${state.data.length.toLocaleString()} • Levels: ${state.selectedLevels.map(displayFieldName).join(" → ")}`);
+
+				const treeData = buildHierarchy(state.data, state.selectedLevels);
+				const root = d3.hierarchy(treeData, (d) => d.children);
+				root.x0 = 0;
+				root.y0 = 0;
+				// Default: keep the last level collapsed (e.g. Organization), because it can be very dense.
+				// For N selected levels, last level nodes are at depth N, so we collapse children at depth N-1.
+				const parentDepthToCollapse = Math.max(0, state.selectedLevels.length - 1);
+				if (parentDepthToCollapse > 0) {
+					collapseChildrenAtDepth(root, parentDepthToCollapse);
+				}
+
+				const nodeSizeX = 18;
+				const nodeSizeY = 190;
+				const layout = d3.tree().nodeSize([nodeSizeX, nodeSizeY]);
+				layout(root);
+
+				const nodes = root.descendants();
+				const links = root.links();
+
+				// Fit height to content
+				const xExtent = d3.extent(nodes, (d) => d.x);
+				const margin = { top: 16, right: 16, bottom: 16, left: 16 };
+				const width = +svg.attr("width");
+				const height = Math.max(520, Math.ceil((xExtent[1] - xExtent[0]) + margin.top + margin.bottom + 80));
+				svg.attr("height", height).attr("viewBox", [0, 0, width, height]);
+
+				// Initial transform: move content into view
+				const initial = d3.zoomIdentity.translate(margin.left, margin.top - xExtent[0] + 20);
+				svg.call(zoom.transform, initial);
+
+				const linkPath = d3
+					.linkHorizontal()
+					.x((d) => d.y)
+					.y((d) => d.x);
+
+				const MAX_LABEL_CHARS = 30;
+				const MAX_LABEL_PX = 170;
+				const ELLIPSIS = "…";
+				function truncateSvgText(textSelection) {
+					textSelection.each(function () {
+						const textEl = this;
+						const full = textEl.textContent ?? "";
+						if (!full) return;
+						// Quick char-based truncation first
+						let candidate = full;
+						if (candidate.length > MAX_LABEL_CHARS) {
+							candidate = candidate.slice(0, MAX_LABEL_CHARS).trimEnd() + ELLIPSIS;
+							textEl.textContent = candidate;
+						}
+						// Pixel-based truncation (more accurate)
+						try {
+							const tooWide = () => textEl.getComputedTextLength() > MAX_LABEL_PX;
+							if (!tooWide()) return;
+
+							// Binary search how many chars can fit
+							let lo = 0;
+							let hi = full.length;
+							while (lo < hi) {
+								const mid = Math.ceil((lo + hi) / 2);
+								textEl.textContent = full.slice(0, mid).trimEnd() + ELLIPSIS;
+								if (tooWide()) hi = mid - 1;
+								else lo = mid;
+							}
+							const finalLen = Math.max(0, lo);
+							textEl.textContent = full.slice(0, finalLen).trimEnd() + (finalLen < full.length ? ELLIPSIS : "");
+						} catch {
+							// If measurement isn't available, keep the char-based truncation.
+						}
+					});
+				}
+
+				linkGroup
+					.selectAll("path")
+					.data(links)
+					.enter()
+					.append("path")
+					.attr("class", "link")
+					.attr("d", (d) => linkPath({ source: d.source, target: d.target }));
+
+				const node = nodeGroup
+					.selectAll("g.node")
+					.data(nodes, (d) => d.data._id)
+					.enter()
+					.append("g")
+					.attr("class", "node")
+					.attr("transform", (d) => `translate(${d.y},${d.x})`)
+					.style("cursor", "pointer")
+					.on("click", (_, d) => {
+						if (d.children) {
+							d._children = d.children;
+							d.children = null;
+						} else {
+							d.children = d._children;
+							d._children = null;
+						}
+						// Re-render from the current (toggled) hierarchy
+						rerenderFromRoot(root);
+					});
+
+				node.append("circle").attr("r", 5.5);
+
+				// Expand/collapse control (shown only if the node has children or hidden children)
+				const toggleBg = node
+					.append("circle")
+					.attr("class", "toggleBg")
+					.attr("cx", -16)
+					.attr("cy", 0)
+					.attr("r", 7.5)
+					.style("display", (d) => (d.children || d._children ? null : "none"))
+					.style("cursor", (d) => (d.children || d._children ? "pointer" : "default"));
+
+				const toggleText = node
+					.append("text")
+					.attr("class", "toggle")
+					.attr("dy", "0.34em")
+					.attr("x", -20)
+					.text((d) => (d.children ? "−" : d._children ? "+" : ""))
+					.style("display", (d) => (d.children || d._children ? null : "none"))
+					.style("cursor", (d) => (d.children || d._children ? "pointer" : "default"));
+
+				const toggleHandler = (event, d) => {
+					if (!(d.children || d._children)) return;
+					event.stopPropagation();
+					if (d.children) {
+						d._children = d.children;
+						d.children = null;
+					} else {
+						d.children = d._children;
+						d._children = null;
+					}
+					rerenderFromRoot(root);
+				};
+				toggleBg.on("click", toggleHandler);
+				toggleText.on("click", toggleHandler);
+
+				const label = node
+					.append("text")
+					.attr("class", "nodeLabel")
+					.attr("dy", "0.32em")
+					.attr("x", 10)
+					.text((d) => d.data.name);
+				label.append("title").text((d) => d.data.name);
+				truncateSvgText(label);
+
+				// Helper: quick re-render when toggling (without rebuilding from raw data)
+				function rerenderFromRoot(existingRoot) {
+					nodeGroup.selectAll("*").remove();
+					linkGroup.selectAll("*").remove();
+
+					layout(existingRoot);
+
+					const n = existingRoot.descendants();
+					const l = existingRoot.links();
+					const xe = d3.extent(n, (d) => d.x);
+					const h = Math.max(520, Math.ceil((xe[1] - xe[0]) + margin.top + margin.bottom + 80));
+					svg.attr("height", h).attr("viewBox", [0, 0, width, h]);
+					const keep = d3.zoomTransform(svg.node());
+					svg.call(zoom.transform, keep);
+
+					linkGroup
+						.selectAll("path")
+						.data(l)
+						.enter()
+						.append("path")
+						.attr("class", "link")
+						.attr("d", (d) => linkPath({ source: d.source, target: d.target }));
+
+					const ng = nodeGroup
+						.selectAll("g.node")
+						.data(n, (d) => d.data._id)
+						.enter()
+						.append("g")
+						.attr("class", "node")
+						.attr("transform", (d) => `translate(${d.y},${d.x})`)
+						.style("cursor", "pointer")
+						.on("click", (_, d) => {
+							if (d.children) {
+								d._children = d.children;
+								d.children = null;
+							} else {
+								d.children = d._children;
+								d._children = null;
+							}
+							rerenderFromRoot(existingRoot);
+						});
+
+					ng.append("circle").attr("r", 5.5);
+
+					const tbg = ng
+						.append("circle")
+						.attr("class", "toggleBg")
+						.attr("cx", -16)
+						.attr("cy", 0)
+						.attr("r", 7.5)
+						.style("display", (d) => (d.children || d._children ? null : "none"))
+						.style("cursor", (d) => (d.children || d._children ? "pointer" : "default"));
+
+					const ttxt = ng
+						.append("text")
+						.attr("class", "toggle")
+						.attr("dy", "0.34em")
+						.attr("x", -20)
+						.text((d) => (d.children ? "−" : d._children ? "+" : ""))
+						.style("display", (d) => (d.children || d._children ? null : "none"))
+						.style("cursor", (d) => (d.children || d._children ? "pointer" : "default"));
+
+					const handler = (event, d) => {
+						if (!(d.children || d._children)) return;
+						event.stopPropagation();
+						if (d.children) {
+							d._children = d.children;
+							d.children = null;
+						} else {
+							d.children = d._children;
+							d._children = null;
+						}
+						rerenderFromRoot(existingRoot);
+					};
+					tbg.on("click", handler);
+					ttxt.on("click", handler);
+					const lbl = ng
+						.append("text")
+						.attr("class", "nodeLabel")
+						.attr("dy", "0.32em")
+						.attr("x", 10)
+						.text((d) => d.data.name);
+					lbl.append("title").text((d) => d.data.name);
+					truncateSvgText(lbl);
+				}
+			}
+
+			// Keep chart responsive
+			window.addEventListener("resize", () => {
+				svg = null;
+				initChart();
+				renderChart();
+			});
+
+			async function main() {
+				setStatus("Loading data.json...");
+				try {
+					const res = await fetch("./data.json", { cache: "no-store" });
+					if (!res.ok) throw new Error(`HTTP ${res.status}`);
+					const data = await res.json();
+					if (!Array.isArray(data)) throw new Error("Expected data.json to be an array of records");
+
+					state.data = data;
+					state.fields = inferFields(data);
+
+					// Set initial levels
+					const set = new Set(state.fields);
+					state.selectedLevels = DEFAULT_LEVELS_DISPLAY
+						.map((d) => resolveFieldKeyByDisplayName(state.fields, d))
+						.filter((k) => k && set.has(k));
+					if (!state.selectedLevels.length && state.fields.length) {
+						state.selectedLevels = state.fields.slice(0, 3);
+					}
+
+					initChart();
+					syncUIAndRender();
+				} catch (err) {
+					console.error(err);
+					setStatus(
+						"Could not load data.json. Open this folder with a local server (not file://). Example: python -m http.server 8000"
+					);
+				}
+			}
+
+			main();
+		</script>
+	</body>
+</html>
