@@ -84,6 +84,19 @@
 				stroke-width: 1.25px;
 			}
 
+			/* Partner hover: emphasize connected links, dim the rest */
+			.link.is-dim {
+				stroke: rgba(15, 23, 42, 0.28);
+				stroke-width: 2px;
+				opacity: 0.35;
+			}
+
+			.link.is-highlight {
+				stroke: rgba(15, 23, 42, 0.65);
+				stroke-width: 3px;
+				opacity: 1;
+			}
+
 			.node circle {
 				stroke: #0f172a;
 				stroke-opacity: 0.18;
@@ -245,7 +258,10 @@
 				const initiativesWithType = initiatives
 					.map((row) => {
 						const projectName = normalizeString(row['Project Name']);
-						const projectType = normalizeString(row['Project Type']);
+						// Use the corrected column (Project Type.1). Fallback to Project Type.
+						const projectType =
+							normalizeString(row['Project Type.1']) ||
+							normalizeString(row['Project Type']);
 						const tag = normalizeString(row.Tag);
 						const explanation = normalizeString(row['Project Explanation']);
 						return { projectName, projectType, tag, explanation, raw: row };
@@ -397,6 +413,7 @@
 				// Selection state for partner highlighting
 				let selectedInitiativeId = null;
 				let hoveredInitiativeId = null;
+				let hoveredPartnerId = null;
 
 				const typeNodes = model.nodes.filter((n) => n.kind === 'type');
 				const initiativeNodes = model.nodes.filter((n) => n.kind === 'initiative');
@@ -479,6 +496,11 @@
 					return 3;
 				}
 
+				// Stable link ids for adjacency lookups
+				model.links.forEach((l, i) => {
+					l._id = i;
+				});
+
 				const link = viewport
 					.append('g')
 					.attr('stroke-linecap', 'round')
@@ -549,6 +571,28 @@
 					partnerNode.classed('is-dim', (d) => !keep.has(d.id));
 				}
 
+				// Build adjacency: partner -> link ids (initiative->partner links)
+				const linkIdsByPartnerId = new Map();
+				for (const l of model.links) {
+					const s = typeof l.source === 'object' ? l.source.id : l.source;
+					const t = typeof l.target === 'object' ? l.target.id : l.target;
+					if (!String(s).startsWith('initiative:')) continue;
+					if (!String(t).startsWith('org:')) continue;
+					if (!linkIdsByPartnerId.has(t)) linkIdsByPartnerId.set(t, new Set());
+					linkIdsByPartnerId.get(t).add(l._id);
+				}
+
+				function applyPartnerLinkHighlight() {
+					if (!hoveredPartnerId) {
+						link.classed('is-highlight', false).classed('is-dim', false);
+						return;
+					}
+					const keep = linkIdsByPartnerId.get(hoveredPartnerId) || new Set();
+					link
+						.classed('is-highlight', (d) => keep.has(d._id))
+						.classed('is-dim', (d) => !keep.has(d._id));
+				}
+
 				// Click on background clears selection
 				zoomRect.on('click', () => {
 					selectedInitiativeId = null;
@@ -560,6 +604,8 @@
 					.on('mouseenter', function (event, d) {
 						if (d.kind === 'partner') {
 							d3.select(this).classed('is-hover', true);
+							hoveredPartnerId = d.id;
+							applyPartnerLinkHighlight();
 							return;
 						}
 						if (d.kind === 'initiative') {
@@ -592,6 +638,10 @@
 					.on('mouseleave', function (event, d) {
 						tooltip.style.opacity = '0';
 						d3.select(this).classed('is-hover', false);
+						if (d.kind === 'partner') {
+							hoveredPartnerId = null;
+							applyPartnerLinkHighlight();
+						}
 						if (d.kind === 'initiative') {
 							hoveredInitiativeId = null;
 							applyPartnerDimming();
