@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Network Hierarchy</title>
+		<style>
+			:root {
+				--bg: #ffffff;
+				--text: #0f172a;
+				--muted: #64748b;
+				--stroke: #cbd5e1;
+				--node: #3b6fb6;
+				--nodeLight: #b7d2f3;
+				--center: #111827;
+				--danger: #dc2626;
+			}
+
+			html,
+			body {
+				height: 100%;
+				margin: 0;
+				font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+				color: var(--text);
+				background: var(--bg);
+			}
+
+			#app {
+				height: 100%;
+				display: grid;
+				grid-template-rows: auto 1fr;
+			}
+
+			header {
+				padding: 10px 12px;
+				border-bottom: 1px solid #e5e7eb;
+				display: flex;
+				align-items: baseline;
+				justify-content: space-between;
+				gap: 10px;
+				flex-wrap: wrap;
+			}
+
+			header h1 {
+				font-size: 14px;
+				margin: 0;
+				font-weight: 600;
+			}
+
+			header .meta {
+				font-size: 12px;
+				color: var(--muted);
+			}
+
+			#viz {
+				position: relative;
+				height: 100%;
+				min-height: 520px;
+			}
+
+			svg {
+				width: 100%;
+				height: 100%;
+				display: block;
+			}
+
+			.link {
+				stroke: rgba(15, 23, 42, 0.2);
+				stroke-width: 1.25px;
+			}
+
+			.link.level-1 {
+				stroke: rgba(15, 23, 42, 0.28);
+				stroke-width: 3px;
+			}
+
+			.link.level-2 {
+				stroke: rgba(15, 23, 42, 0.18);
+				stroke-width: 2px;
+			}
+
+			.link.level-3 {
+				stroke: rgba(15, 23, 42, 0.1);
+				stroke-width: 1.25px;
+			}
+
+			.node circle {
+				stroke: #0f172a;
+				stroke-opacity: 0.18;
+			}
+
+			.node text {
+				font-size: 12px;
+				fill: var(--text);
+				pointer-events: none;
+			}
+
+			.node.center circle {
+				fill: var(--center);
+				stroke: rgba(255, 255, 255, 0.85);
+				stroke-width: 1.5px;
+			}
+
+			.node.type circle {
+				fill: var(--node);
+			}
+
+			.node.type text {
+				font-weight: 700;
+				font-size: 23px;
+				fill: var(--node);
+			}
+
+			.node.initiative circle {
+				fill: var(--nodeLight);
+				stroke: var(--node);
+				stroke-opacity: 0.35;
+			}
+
+			.node.initiative text {
+				font-size: 11px;
+				fill: var(--text);
+			}
+
+			.node.partner circle {
+				fill: var(--center);
+				stroke: var(--center);
+				stroke-opacity: 0.2;
+			}
+
+			.node.partner text {
+				font-size: 10px;
+				fill: var(--muted);
+			}
+
+			.node.partner.is-hover circle {
+				fill: var(--danger);
+				stroke: var(--danger);
+				stroke-opacity: 0.3;
+			}
+
+			.node.partner.is-dim circle {
+				fill: #9ca3af;
+				stroke: #9ca3af;
+				stroke-opacity: 0.25;
+			}
+
+			.node.partner.is-dim {
+				opacity: 0.25;
+			}
+
+			.tooltip {
+				position: absolute;
+				pointer-events: none;
+				background: rgba(17, 24, 39, 0.92);
+				color: #fff;
+				padding: 8px 10px;
+				border-radius: 6px;
+				font-size: 12px;
+				line-height: 1.25;
+				transform: translate(10px, 10px);
+				max-width: 340px;
+				opacity: 0;
+				transition: opacity 0.08s linear;
+				white-space: normal;
+			}
+
+			.error {
+				padding: 12px;
+				color: #991b1b;
+				background: #fef2f2;
+				border: 1px solid #fee2e2;
+				border-radius: 8px;
+				margin: 12px;
+				font-size: 13px;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="app">
+			<header>
+				<h1>Thrive Projects and Partners</h1>
+			</header>
+			<div id="viz">
+				<div id="tooltip" class="tooltip"></div>
+				<svg id="chart" aria-label="Network graph"></svg>
+			</div>
+		</div>
+
+		<!-- D3 + Lodash -->
+		<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/lodash@4/lodash.min.js"></script>
+
+		<script>
+
+            console.log("Processing data to create  newwork." );
+
+			const INITIATIVES_URL = './initiative.json';
+			const PARTNERS_URL = './partners.json';
+
+			function normalizeString(value) {
+				if (value === null || value === undefined) return null;
+				const s = String(value).trim();
+				return s.length ? s : null;
+			}
+
+			function showError(message) {
+				const viz = document.getElementById('viz');
+				const div = document.createElement('div');
+				div.className = 'error';
+				div.textContent = message;
+				viz.prepend(div);
+			}
+
+			async function loadData() {
+				const [initiatives, partners] = await Promise.all([
+					d3.json(INITIATIVES_URL),
+					d3.json(PARTNERS_URL),
+				]);
+
+				if (!Array.isArray(initiatives)) {
+					throw new Error('initiative.json did not load as an array');
+				}
+				if (!Array.isArray(partners)) {
+					throw new Error('partners.json did not load as an array');
+				}
+
+				return { initiatives, partners };
+			}
+
+			function buildModel({ initiatives, partners }) {
+				// Map Tag -> Set(Organization) for partner counts
+				const orgsByTag = _.chain(partners)
+					.groupBy((row) => normalizeString(row.Tag) || '__missing__')
+					.mapValues((rows) =>
+						new Set(
+							rows
+								.map((r) => normalizeString(r.Organization))
+								.filter(Boolean)
+						)
+					)
+					.value();
+
+				// Count initiatives per Project Type (primary hierarchy requirement)
+				const initiativesWithType = initiatives
+					.map((row) => {
+						const projectName = normalizeString(row['Project Name']);
+						const projectType = normalizeString(row['Project Type']);
+						const tag = normalizeString(row.Tag);
+						const explanation = normalizeString(row['Project Explanation']);
+						return { projectName, projectType, tag, explanation, raw: row };
+					})
+					.filter((x) => x.projectType);
+
+				const initiativesByType = _.groupBy(initiativesWithType, (x) => x.projectType);
+
+				// Also incorporate partners.json by computing unique orgs reachable via initiative tags per type
+				const typeStats = Object.entries(initiativesByType).map(([type, rows]) => {
+					const orgSet = new Set();
+					for (const r of rows) {
+						const t = r.tag;
+						if (!t) continue;
+						const set = orgsByTag[t];
+						if (!set) continue;
+						for (const org of set) orgSet.add(org);
+					}
+
+					return {
+						type,
+						initiativeCount: rows.length,
+						partnerOrgCount: orgSet.size,
+					};
+				});
+
+				const sortedTypes = _.orderBy(typeStats, ['initiativeCount', 'partnerOrgCount', 'type'], ['desc', 'desc', 'asc']);
+
+				const centerId = 'center';
+
+				const typeNodes = sortedTypes.map((t) => ({
+					id: `type:${t.type}`,
+					kind: 'type',
+					label: t.type,
+					initiativeCount: t.initiativeCount,
+					partnerOrgCount: t.partnerOrgCount,
+				}));
+
+				const typeIdByType = _.fromPairs(typeNodes.map((n) => [n.label, n.id]));
+
+				// Initiatives are best keyed by Tag (partners join uses Tag)
+				const initiativeNodes = _.chain(initiativesWithType)
+					.filter((r) => r.projectName)
+					.uniqBy((r) => r.tag || `${r.projectType}__${r.projectName}`)
+					.map((r) => {
+						const orgSet = r.tag ? orgsByTag[r.tag] : null;
+						const id = r.tag ? `initiative:${r.tag}` : `initiative:${r.projectType}::${r.projectName}`;
+						return {
+							id,
+							kind: 'initiative',
+							label: r.projectName,
+							projectType: r.projectType,
+							tag: r.tag,
+							explanation: r.explanation,
+							initiativeCount: 1,
+							partnerOrgCount: orgSet ? orgSet.size : 0,
+						};
+					})
+					.value();
+
+				// Partner org nodes (3rd layer) + usage counts
+				const orgUsageCount = new Map();
+				for (const n of initiativeNodes) {
+					if (!n.tag) continue;
+					const set = orgsByTag[n.tag];
+					if (!set) continue;
+					for (const org of set) {
+						orgUsageCount.set(org, (orgUsageCount.get(org) || 0) + 1);
+					}
+				}
+
+				const partnerNodes = Array.from(orgUsageCount.entries())
+					.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+					.map(([org, count]) => ({
+						id: `org:${org}`,
+						kind: 'partner',
+						label: org,
+						initiativeCount: count,
+						partnerOrgCount: 0,
+					}));
+
+				const nodes = [
+					{
+						id: centerId,
+						kind: 'center',
+						label: 'Thrive',
+						initiativeCount: initiatives.length,
+						partnerOrgCount: _.uniq(partners.map((p) => normalizeString(p.Organization)).filter(Boolean)).length,
+					},
+					...typeNodes,
+					...initiativeNodes,
+					...partnerNodes,
+				];
+
+				const links = [
+					...sortedTypes.map((t) => ({
+						source: centerId,
+						target: `type:${t.type}`,
+					})),
+					...initiativeNodes.map((n) => ({
+						source: typeIdByType[n.projectType] || `type:${n.projectType}`,
+						target: n.id,
+					})),
+					..._.flatMap(initiativeNodes, (n) => {
+						if (!n.tag) return [];
+						const set = orgsByTag[n.tag];
+						if (!set || set.size === 0) return [];
+						return Array.from(set).map((org) => ({
+							source: n.id,
+							target: `org:${org}`,
+						}));
+					}),
+				];
+
+				return { nodes, links };
+			}
+
+			function renderGraph(model) {
+				const svg = d3.select('#chart');
+				svg.selectAll('*').remove();
+
+				const tooltip = document.getElementById('tooltip');
+
+				const width = svg.node().clientWidth;
+				const height = svg.node().clientHeight;
+				const cx = width / 2;
+				const cy = height / 2;
+
+				// Zoom/pan setup
+				svg.attr('viewBox', `0 0 ${width} ${height}`);
+				const zoomRect = svg
+					.append('rect')
+					.attr('width', width)
+					.attr('height', height)
+					.attr('fill', 'transparent')
+					.style('pointer-events', 'all');
+
+				const viewport = svg.append('g').attr('class', 'viewport');
+
+				const zoom = d3
+					.zoom()
+					.scaleExtent([0.12, 8])
+					.on('zoom', (event) => {
+						viewport.attr('transform', event.transform);
+					});
+
+				svg.call(zoom);
+
+				// Selection state for partner highlighting
+				let selectedInitiativeId = null;
+				let hoveredInitiativeId = null;
+
+				const typeNodes = model.nodes.filter((n) => n.kind === 'type');
+				const initiativeNodes = model.nodes.filter((n) => n.kind === 'initiative');
+				const partnerNodes = model.nodes.filter((n) => n.kind === 'partner');
+				const maxCount = d3.max(typeNodes, (d) => d.initiativeCount) || 1;
+
+				const radiusScale = d3
+					.scaleSqrt()
+					.domain([0, maxCount])
+					.range([14, 44]);
+
+				const centerRadius = 34;
+				const initiativeRadius = 12;
+				const partnerRadius = 6;
+
+				function nodeRadius(d) {
+					if (d.kind === 'center') return centerRadius;
+					if (d.kind === 'type') return radiusScale(d.initiativeCount);
+					if (d.kind === 'initiative') return initiativeRadius;
+					return partnerRadius;
+				}
+
+				const ringR = Math.max(140, Math.min(width, height) * 0.32);
+				const angleStep = (Math.PI * 2) / Math.max(1, typeNodes.length);
+
+				// Fix Project Type nodes to an evenly spaced ring around the center
+				for (let i = 0; i < typeNodes.length; i++) {
+					const a = i * angleStep - Math.PI / 2;
+					const tx = cx + Math.cos(a) * ringR;
+					const ty = cy + Math.sin(a) * ringR;
+					typeNodes[i].x = tx;
+					typeNodes[i].y = ty;
+					typeNodes[i].fx = tx;
+					typeNodes[i].fy = ty;
+				}
+
+				// Seed initiatives around their type node
+				const initiativesByTypeId = _.groupBy(initiativeNodes, (n) => `type:${n.projectType}`);
+				for (const t of typeNodes) {
+					const kids = initiativesByTypeId[t.id] || [];
+					for (let i = 0; i < kids.length; i++) {
+						const a = (i / Math.max(1, kids.length)) * Math.PI * 2;
+						const localR = Math.max(70, nodeRadius(t) + 55);
+						kids[i].x = (t.x ?? cx) + Math.cos(a) * localR;
+						kids[i].y = (t.y ?? cy) + Math.sin(a) * localR;
+					}
+				}
+
+				// Seed partner orgs around their initiative
+				const initiativesById = _.keyBy(initiativeNodes, (n) => n.id);
+				const partnerById = _.keyBy(partnerNodes, (n) => n.id);
+				const partnerLinks = model.links.filter((l) => String(l.source).startsWith('initiative:') && String(l.target).startsWith('org:'));
+				const partnersByInitiative = _.groupBy(partnerLinks, (l) => l.source);
+
+				for (const [initiativeId, links] of Object.entries(partnersByInitiative)) {
+					const parent = initiativesById[initiativeId];
+					if (!parent) continue;
+					for (let i = 0; i < links.length; i++) {
+						const child = partnerById[links[i].target];
+						if (!child) continue;
+						if (child.x != null && child.y != null) continue;
+						const a = (i / Math.max(1, links.length)) * Math.PI * 2;
+						const localR = Math.max(45, nodeRadius(parent) + 35);
+						child.x = (parent.x ?? cx) + Math.cos(a) * localR;
+						child.y = (parent.y ?? cy) + Math.sin(a) * localR;
+					}
+				}
+
+				const centerNode = model.nodes.find((n) => n.kind === 'center');
+				centerNode.x = cx;
+				centerNode.y = cy;
+				centerNode.fx = cx;
+				centerNode.fy = cy;
+
+				function linkLevel(l) {
+					const s = typeof l.source === 'object' ? l.source.id : l.source;
+					const t = typeof l.target === 'object' ? l.target.id : l.target;
+					if (s === 'center' || t === 'center') return 1;
+					if (String(s).startsWith('type:') || String(t).startsWith('type:')) return 2;
+					return 3;
+				}
+
+				const link = viewport
+					.append('g')
+					.attr('stroke-linecap', 'round')
+					.selectAll('line')
+					.data(model.links)
+					.join('line')
+					.attr('class', (d) => `link level-${linkLevel(d)}`);
+
+				const node = viewport
+					.append('g')
+					.selectAll('g')
+					.data(model.nodes)
+					.join('g')
+					.attr('class', (d) => `node ${d.kind}`)
+					.call(
+						d3
+							.drag()
+							.on('start', (event, d) => {
+								if (d.kind === 'center' || d.kind === 'type') return;
+								if (!event.active) simulation.alphaTarget(0.12).restart();
+								d.fx = d.x;
+								d.fy = d.y;
+							})
+							.on('drag', (event, d) => {
+								if (d.kind === 'center' || d.kind === 'type') return;
+								d.fx = event.x;
+								d.fy = event.y;
+							})
+							.on('end', (event, d) => {
+								if (d.kind === 'center' || d.kind === 'type') return;
+								if (!event.active) simulation.alphaTarget(0);
+								d.fx = null;
+								d.fy = null;
+							})
+					);
+
+				node
+					.append('circle')
+					.attr('r', (d) => nodeRadius(d));
+
+				// Labels only for Project Types + Project Names (initiatives)
+				node
+					.filter((d) => d.kind === 'type' || d.kind === 'initiative')
+					.append('text')
+					.attr('text-anchor', 'middle')
+					.attr('dy', (d) => -nodeRadius(d) - 10)
+					.text((d) => d.label);
+
+				// Build adjacency: initiative -> set(org)
+				const partnersByInitiativeId = new Map();
+				for (const l of model.links) {
+					const s = typeof l.source === 'object' ? l.source.id : l.source;
+					const t = typeof l.target === 'object' ? l.target.id : l.target;
+					if (!String(s).startsWith('initiative:')) continue;
+					if (!String(t).startsWith('org:')) continue;
+					if (!partnersByInitiativeId.has(s)) partnersByInitiativeId.set(s, new Set());
+					partnersByInitiativeId.get(s).add(t);
+				}
+
+				const partnerNode = node.filter((d) => d.kind === 'partner');
+				function applyPartnerDimming() {
+					const activeId = hoveredInitiativeId || selectedInitiativeId;
+					if (!activeId) {
+						partnerNode.classed('is-dim', false);
+						return;
+					}
+					const keep = partnersByInitiativeId.get(activeId) || new Set();
+					partnerNode.classed('is-dim', (d) => !keep.has(d.id));
+				}
+
+				// Click on background clears selection
+				zoomRect.on('click', () => {
+					selectedInitiativeId = null;
+					hoveredInitiativeId = null;
+					applyPartnerDimming();
+				});
+
+				node
+					.on('mouseenter', function (event, d) {
+						if (d.kind === 'partner') {
+							d3.select(this).classed('is-hover', true);
+							return;
+						}
+						if (d.kind === 'initiative') {
+							hoveredInitiativeId = d.id;
+							applyPartnerDimming();
+						}
+					})
+					.on('mousemove', (event, d) => {
+						let body = '';
+						if (d.kind === 'initiative') {
+							body += `<div>Project Type: <b>${_.escape(d.projectType || '')}</b></div>`;
+							if (d.tag) body += `<div>Tag: <b>${_.escape(d.tag)}</b></div>`;
+							if (d.explanation) body += `<div style="margin-top:6px;opacity:0.95;">${_.escape(d.explanation)}</div>`;
+							body += `<div style="margin-top:6px;">Partner orgs (unique): <b>${d.partnerOrgCount ?? 0}</b></div>`;
+						} else if (d.kind === 'partner') {
+							body += `<div>Initiatives linked: <b>${d.initiativeCount ?? 0}</b></div>`;
+						} else {
+							const initiativesLabel = d.kind === 'center' ? 'Initiatives (total)' : 'Initiatives';
+							body += `<div>${initiativesLabel}: <b>${d.initiativeCount ?? 0}</b></div>`;
+							body += `<div>Partner orgs (unique): <b>${d.partnerOrgCount ?? 0}</b></div>`;
+						}
+
+						tooltip.innerHTML = `${
+							`<div style="font-weight:600;margin-bottom:4px;">${_.escape(d.label)}</div>` + body
+						}`;
+						tooltip.style.left = `${event.offsetX}px`;
+						tooltip.style.top = `${event.offsetY}px`;
+						tooltip.style.opacity = '1';
+					})
+					.on('mouseleave', function (event, d) {
+						tooltip.style.opacity = '0';
+						d3.select(this).classed('is-hover', false);
+						if (d.kind === 'initiative') {
+							hoveredInitiativeId = null;
+							applyPartnerDimming();
+						}
+					})
+					.on('click', function (event, d) {
+						if (d.kind !== 'initiative') return;
+						event.stopPropagation();
+						selectedInitiativeId = selectedInitiativeId === d.id ? null : d.id;
+						applyPartnerDimming();
+					});
+
+				const simulation = d3
+					.forceSimulation(model.nodes)
+					.force(
+						'link',
+						d3
+							.forceLink(model.links)
+							.id((d) => d.id)
+							.distance((l) => {
+								const source = typeof l.source === 'object' ? l.source : model.nodes.find((n) => n.id === l.source);
+								const target = typeof l.target === 'object' ? l.target : model.nodes.find((n) => n.id === l.target);
+
+								if (source?.kind === 'center' || target?.kind === 'center') {
+									// All Project Types are equally spaced on a ring, so this can be constant.
+									return ringR;
+								}
+								// Type -> initiative
+								if (source?.kind === 'type' || target?.kind === 'type') {
+									// Give initiatives extra breathing room from the fixed type ring.
+									return 110 + nodeRadius(target);
+								}
+								// Initiative -> partner
+								// Push partner orgs farther from initiatives so they don't overlap.
+								return 85 + nodeRadius(target);
+							})
+							.strength((l) => {
+								const source = typeof l.source === 'object' ? l.source : model.nodes.find((n) => n.id === l.source);
+								const target = typeof l.target === 'object' ? l.target : model.nodes.find((n) => n.id === l.target);
+								if (source?.kind === 'center' || target?.kind === 'center') return 0.05;
+								if (source?.kind === 'type' || target?.kind === 'type') return 0.55;
+								return 0.22;
+							})
+					)
+					.force('charge', d3.forceManyBody().strength(-680))
+					.force(
+						'collide',
+						d3.forceCollide().radius((d) => {
+							// Keep a clear buffer around the center so dense partner clusters
+							// don't visually crowd the origin.
+							if (d.kind === 'center') return nodeRadius(d) + 140;
+							if (d.kind === 'partner') return nodeRadius(d) + 16;
+							return nodeRadius(d) + 12;
+						})
+					)
+					.force('x', d3.forceX(cx).strength(0.04))
+					.force('y', d3.forceY(cy).strength(0.04))
+					.alpha(1)
+					.alphaDecay(0.08);
+
+				simulation.on('tick', () => {
+					link
+						.attr('x1', (d) => d.source.x)
+						.attr('y1', (d) => d.source.y)
+						.attr('x2', (d) => d.target.x)
+						.attr('y2', (d) => d.target.y);
+
+					node.attr('transform', (d) => `translate(${d.x},${d.y})`);
+				});
+
+				let didInitialFit = false;
+				function fitToView({ animate } = { animate: false }) {
+					const xs = model.nodes.map((n) => n.x).filter((v) => Number.isFinite(v));
+					const ys = model.nodes.map((n) => n.y).filter((v) => Number.isFinite(v));
+					if (xs.length === 0 || ys.length === 0) return;
+
+					const minX = Math.min(...xs);
+					const maxX = Math.max(...xs);
+					const minY = Math.min(...ys);
+					const maxY = Math.max(...ys);
+
+					const pad = 80;
+					const dx = Math.max(1, maxX - minX);
+					const dy = Math.max(1, maxY - minY);
+
+					const scale = Math.min(width / (dx + pad * 2), height / (dy + pad * 2));
+					const cxData = minX + dx / 2;
+					const cyData = minY + dy / 2;
+					const tx = width / 2 - scale * cxData;
+					const ty = height / 2 - scale * cyData;
+
+					const t = d3.zoomIdentity.translate(tx, ty).scale(scale);
+					const sel = animate ? svg.transition().duration(450) : svg;
+					sel.call(zoom.transform, t);
+				}
+
+				simulation.on('end', () => {
+					if (didInitialFit) return;
+					didInitialFit = true;
+					fitToView({ animate: true });
+				});
+
+				// Fallback: fit after a short settle period even if simulation doesn't reach 'end'
+				setTimeout(() => {
+					if (didInitialFit) return;
+					didInitialFit = true;
+					fitToView({ animate: true });
+				}, 800);
+
+				function resize() {
+					const w = svg.node().clientWidth;
+					const h = svg.node().clientHeight;
+					const nx = w / 2;
+					const ny = h / 2;
+					svg.attr('viewBox', `0 0 ${w} ${h}`);
+					zoomRect.attr('width', w).attr('height', h);
+					centerNode.fx = nx;
+					centerNode.fy = ny;
+
+					// Recompute the fixed ring for Project Type nodes
+					const newRingR = Math.max(140, Math.min(w, h) * 0.32);
+					const newAngleStep = (Math.PI * 2) / Math.max(1, typeNodes.length);
+					for (let i = 0; i < typeNodes.length; i++) {
+						const a = i * newAngleStep - Math.PI / 2;
+						const tx = nx + Math.cos(a) * newRingR;
+						const ty = ny + Math.sin(a) * newRingR;
+						typeNodes[i].x = tx;
+						typeNodes[i].y = ty;
+						typeNodes[i].fx = tx;
+						typeNodes[i].fy = ty;
+					}
+
+					simulation.force('x', d3.forceX(nx).strength(0.04));
+					simulation.force('y', d3.forceY(ny).strength(0.04));
+					simulation.alpha(0.6).restart();
+				}
+
+				window.addEventListener('resize', _.throttle(resize, 120));
+			}
+
+			(async function main() {
+				try {
+					const data = await loadData();
+					const model = buildModel(data);
+
+					if (!model.links.length) {
+						showError('No Project Type values found in initiative.json.');
+						return;
+					}
+
+					renderGraph(model);
+				} catch (e) {
+					// Common gotcha: opening as file:// blocks fetch.
+					showError(
+						`Failed to load data. Details: ${e.message}`
+					);
+					// Also log for devs
+					console.error(e);
+				}
+			})();
+		</script>
+	</body>
+</html>
