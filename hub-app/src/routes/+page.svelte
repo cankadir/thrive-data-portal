@@ -1,10 +1,25 @@
 <script>
 	import { maps } from '$lib/store';
+	import flagIcon from '$lib/assets/icons/icon/flag-triangle-right.png';
+	import mapIcon from '$lib/assets/icons/icon/map.png';
+	import mapPinIcon from '$lib/assets/icons/icon/map-pin.png';
+	import targetIcon from '$lib/assets/icons/icon/target.png';
+	import chartIcon from '$lib/assets/icons/icon/line-chart.png';
+	import cursorIcon from '$lib/assets/icons/icon/navigation-cursor.png';
 
-	const mapButtons = Object.entries(maps).map(([id, map]) => ({
-		label: map.title,
-		href: `/maps/${id}`
-	}));
+	const buttons = [
+		{ label: 'Resource Library', href: '/resources', icon: flagIcon },
+		{ label: 'Regional Activity Map', href: '/regional-activity', icon: mapIcon },
+		...Object.entries(maps).map(([id, map]) => {
+			const icons = {
+				'natural-treasures': mapPinIcon,
+				'community-prosperity': targetIcon,
+				'responsible-growth': chartIcon,
+				'transportation-infrastructure': cursorIcon
+			};
+			return { label: map.title, href: `/maps/${id}`, icon: icons[id] };
+		})
+	];
 </script>
 
 <main class="landing">
@@ -15,11 +30,11 @@
 	<p>Please select a section to view.</p>
 
 	<div class="buttons">
-		<a class="button" href="/resources">Resource Library</a>
-
-		<!-- buttons from maps in store.js -->
-		{#each mapButtons as button}
-			<a class="button" href={button.href}>{button.label}</a>
+		{#each buttons as { label, href, icon }}
+			<a class="button" href={href}>
+				<img src={icon} alt="" class="button-icon" style="filter: invert(1);" />
+				{label}
+			</a>
 		{/each}
 	</div>
 </main>
@@ -41,5 +56,14 @@
 		color: #fff;
 		background-color: #32c8db;
 		font-family: 'Arial', sans-serif;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.button-icon {
+		width: 20px;
+		height: 20px;
+		flex-shrink: 0;
 	}
 </style>

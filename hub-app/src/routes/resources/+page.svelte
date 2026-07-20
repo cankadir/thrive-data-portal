@@ -7,7 +7,7 @@
 		<h1>Approved Tools</h1>
 		<p>Total approved tools: {$approvedTools.length}</p>
 		<div class="approved-tools">
-			{#each $approvedTools as tool}
+			{#each $approvedTools as tool (tool.attributes.id || tool.attributes.title)}
 				<div class="approved-tool" style="background-color: {$sectorColors[tool.attributes.sector_tags]}">
 					<h2>{tool.attributes.title}</h2>
 					<p>{tool.attributes.field_9}</p>
