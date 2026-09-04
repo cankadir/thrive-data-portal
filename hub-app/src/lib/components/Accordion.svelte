@@ -31,11 +31,11 @@
 		border: none;
 		background: none;
 		font: inherit;
-		font-size: 1rem;
-		font-weight: 700;
+		font-size: 20px;
+		font-weight: 900;
 		text-align: left;
 		cursor: pointer;
-		color: #222;
+		color: #080808;
 	}
 
 	.chevron {

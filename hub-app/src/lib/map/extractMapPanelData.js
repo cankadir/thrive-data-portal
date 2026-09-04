@@ -2,68 +2,28 @@ import LayerListViewModel from '@arcgis/core/widgets/LayerList/LayerListViewMode
 import LegendViewModel from '@arcgis/core/widgets/Legend/LegendViewModel.js';
 import * as symbolUtils from '@arcgis/core/symbols/support/symbolUtils.js';
 import * as reactiveUtils from '@arcgis/core/core/reactiveUtils.js';
+import identityManager from '@arcgis/core/identity/IdentityManager.js';
+
+identityManager.dialog = null;
 
 /** @param {import('@arcgis/core/views/MapView').default} view */
 export async function extractMapPanelData(view) {
 	if (!view?.map) return { layers: [], legend: [] };
-
 	await view.when();
-
-	try {
-		await view.map.loadAll();
-	} catch (error) {
-		console.warn('Some map layers did not fully load:', error);
-		if (view.map) {
-			const failed = view.map.layers.toArray().filter((l) => l.loadStatus === 'failed');
-			for (const l of failed) {
-				console.error(`[AUTH NEEDED?] Layer failed to load: "${l.title}" (id: ${l.id})`, l.loadError || '');
-			}
-		}
-	}
-
 	const layers = await extractLayers(view);
-
-	console.log('=== Raw map layers ===');
-	if (layers.length === 0) {
-		console.log('No layers returned (likely sign-in required for private layers)');
-	} else {
-		console.table(layers.map((l) => ({ id: l.id, title: l.title, visible: l.visible, depth: l.depth })));
-	}
-
-	let legend = [];
-	try {
-		const legendVM = new LegendViewModel({ view, respectLayerVisibility: false });
-		legend = await extractLegend(legendVM, view);
-	} catch (error) {
-		console.warn('Legend extraction failed:', error);
-	}
-
-	return { layers, legend };
+	return { layers, legend: [] };
 }
 
 /** Fast layer-only extraction, no legend */
 export async function extractLayers(view) {
 	if (!view?.map) return [];
-
 	await view.when();
-
-	try {
-		await view.map.loadAll();
-	} catch (error) {
-		console.warn('Some map layers did not fully load:', error);
-		if (view.map) {
-			const failed = view.map.layers.toArray().filter((l) => l.loadStatus === 'failed');
-			for (const l of failed) {
-				console.error(`[AUTH NEEDED?] Layer failed to load: "${l.title}" (id: ${l.id})`, l.loadError || '');
-			}
-		}
-	}
 
 	let layers = [];
 
 	try {
 		const layerListVM = new LayerListViewModel({ view });
-		await waitForItems(() => toArray(layerListVM.operationalItems));
+		await waitForItems(() => toArray(layerListVM.operationalItems), 2000);
 		const fromList = flattenOperationalItems(layerListVM.operationalItems);
 		layers = fromList.length > 0 ? fromList : safeWalkMapLayers(view);
 	} catch (error) {
@@ -74,6 +34,20 @@ export async function extractLayers(view) {
 	return layers;
 }
 
+/** Deferred legend extraction — call after map is visible */
+export async function extractLegendLazy(view) {
+	if (!view?.map) return [];
+	await view.when();
+
+	let legend = [];
+	try {
+		const legendVM = new LegendViewModel({ view, respectLayerVisibility: false });
+		legend = await extractLegend(legendVM, view);
+	} catch (error) {
+		console.warn('Legend extraction failed:', error);
+	}
+	return legend;
+}
 
 function safeWalkMapLayers(view) {
 	try {
@@ -161,9 +135,17 @@ async function legendFromRenderer(layer) {
 		});
 	}
 
-	for (const info of toArray(renderer.type === 'unique-value' ? renderer.uniqueValueInfos : renderer.type === 'class-breaks' ? renderer.classBreakInfos : [])) {
+	for (const info of toArray(
+		renderer.type === 'unique-value'
+			? renderer.uniqueValueInfos
+			: renderer.type === 'class-breaks'
+				? renderer.classBreakInfos
+				: []
+	)) {
 		items.push({
-			label: info.label ?? (info.value != null ? String(info.value) : `${info.minValue} – ${info.maxValue}`),
+			label:
+				info.label ??
+				(info.value != null ? String(info.value) : `${info.minValue} – ${info.maxValue}`),
 			type: 'symbol',
 			previewHtml: info.symbol ? await symbolToHtml(info.symbol) : null
 		});
@@ -232,33 +214,34 @@ async function symbolToHtml(symbol) {
 	}
 }
 
-/** @param {unknown} items @param {number} [depth] */
-function flattenOperationalItems(items, depth = 0) {
+/** @param {unknown} items @param {number} [depth] @param {boolean} [ancestorVisible] */
+function flattenOperationalItems(items, depth = 0, ancestorVisible = true) {
 	const layers = [];
 
 	for (const item of toArray(items)) {
 		const layer = item.layer;
+		const effectiveVisible = Boolean(item.visible && ancestorVisible);
 
 		if (layer?.id && layer.loadStatus !== 'failed') {
 			layers.push({
 				id: layer.id,
 				title: item.title || layer.title || layer.id,
-				visible: item.visible,
+				visible: effectiveVisible,
 				url: layer.url ?? null,
 				depth
 			});
 		}
 
 		if (item.children?.length) {
-			layers.push(...flattenOperationalItems(item.children, depth + 1));
+			layers.push(...flattenOperationalItems(item.children, depth + 1, effectiveVisible));
 		}
 	}
 
 	return layers;
 }
 
-/** @param {import('@arcgis/core/layers/Layer').default[]} layers @param {number} [depth] */
-function walkMapLayers(layers, depth = 0) {
+/** @param {import('@arcgis/core/layers/Layer').default[]} layers @param {number} [depth] @param {boolean} [ancestorVisible] */
+function walkMapLayers(layers, depth = 0, ancestorVisible = true) {
 	const result = [];
 
 	for (const layer of layers) {
@@ -266,16 +249,18 @@ function walkMapLayers(layers, depth = 0) {
 			if (!layer?.id) continue;
 			if (layer.loadStatus === 'failed') continue;
 
+			const effectiveVisible = Boolean(layer.visible && ancestorVisible);
+
 			result.push({
 				id: layer.id,
 				title: layer.title || layer.id,
-				visible: layer.visible,
+				visible: effectiveVisible,
 				url: layer.url ?? null,
 				depth
 			});
 
 			if (layer.type === 'group' && layer.layers?.length) {
-				result.push(...walkMapLayers(layer.layers.toArray(), depth + 1));
+				result.push(...walkMapLayers(layer.layers.toArray(), depth + 1, effectiveVisible));
 			}
 		} catch (e) {
 			console.warn('walkMapLayers skipped layer:', e);
@@ -310,7 +295,11 @@ function waitForItems(getItems, timeoutMs = 5000) {
 
 	return Promise.race([
 		reactiveUtils.whenOnce(() => {
-			try { return getItems().length > 0; } catch { return true; }
+			try {
+				return getItems().length > 0;
+			} catch {
+				return true;
+			}
 		}),
 		new Promise((resolve) => setTimeout(resolve, timeoutMs))
 	]);

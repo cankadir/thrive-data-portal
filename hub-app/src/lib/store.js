@@ -2,13 +2,6 @@ import { writable } from 'svelte/store';
 
 export const approvedTools = writable([]);
 
-export const sectorColors = writable({
-	'Natural_Treasures': '#588c02',
-	'Community_Prosperity': '#625181',
-	'Responsible_Growth': '#3064B2',
-	'Transportation_/_Infrastructure': '#F68A46'
-});
-
 export const maps = {
 	'natural-treasures': {
 		title: 'Natural Treasures',

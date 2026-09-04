@@ -2,7 +2,7 @@
 	import { slide } from 'svelte/transition';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { mapLayers, mapLegend, mapLoading, setMapLayerVisibility } from '$lib/mapStore';
-	import { fetchLayerMetadata } from '$lib/map/fetchSublayerMetadata';
+	import { fetchLayerMetadata, fetchLayerVisualFieldAlias } from '$lib/map/fetchSublayerMetadata';
 	import mapPin from '$lib/assets/icons/icon/map-pin.png';
 
 	let {
@@ -12,33 +12,44 @@
 	} = $props();
 
 	let layerMetadata = $state({});
+	let layerAlias = $state({});
 	let loadingMeta = $state({});
 	let layers = $state([]);
 	let legend = $state([]);
 	let isLoading = $state(true);
 	let openGroups = new SvelteSet();
 
+	async function loadLayerInfo(layer) {
+		if (!layer.visible || loadingMeta[layer.id]) return;
+
+		loadingMeta[layer.id] = true;
+
+		const [meta, alias] = await Promise.all([
+			fetchLayerMetadata(layer.id, { layerUrl: layer.url }),
+			fetchLayerVisualFieldAlias(layer.id, { layerUrl: layer.url })
+		]);
+
+		layerMetadata[layer.id] = meta;
+		if (alias) layerAlias[layer.id] = alias;
+		loadingMeta[layer.id] = false;
+	}
+
 	$effect(() => {
 		const u1 = mapLayers.subscribe((v) => {
 			layers = v;
 			for (const l of v) {
-				if (l.visible && l.depth > 0 && !layerMetadata[l.id] && !loadingMeta[l.id]) {
-					loadingMeta[l.id] = true;
-					fetchLayerMetadata(l.id, { layerUrl: l.url }).then((meta) => {
-						layerMetadata[l.id] = meta;
-						loadingMeta[l.id] = false;
-					});
+				if (l.visible && l.depth > 0) {
+					loadLayerInfo(l);
 				}
 			}
-			const visible = v.filter((l) => l.visible && l.depth > 1);
-			// if (visible.length > 0) {
-			// 	console.log('=== Visible sublayers ===');
-			// 	console.table(visible.map((l) => ({ title: l.title, id: l.id, depth: l.depth })));
-			// }
 		});
-		const u2 = mapLegend.subscribe((v) => legend = v);
-		const u3 = mapLoading.subscribe((v) => isLoading = v);
-		return () => { u1(); u2(); u3(); };
+		const u2 = mapLegend.subscribe((v) => (legend = v));
+		const u3 = mapLoading.subscribe((v) => (isLoading = v));
+		return () => {
+			u1();
+			u2();
+			u3();
+		};
 	});
 
 	const groups = $derived(buildGroups(layers));
@@ -70,17 +81,17 @@
 	}
 
 	function groupColor(title) {
-		return isCrossSector(title) ? '#9e9e9e' : sectorColor;
+		return sectorColor;
 	}
 
 	function groupBg(id, title) {
 		if (!openGroups.has(id)) return 'transparent';
 		const c = groupColor(title);
-		if (isCrossSector(title)) return '#e0e0e0';
+		if (isCrossSector(title)) return '#f68a46';
 		const num = parseInt(c.replace('#', ''), 16);
-		const r = Math.min(255, ((num >> 16) & 0xFF) + Math.round(255 * 0.8));
-		const g = Math.min(255, ((num >> 8) & 0xFF) + Math.round(255 * 0.8));
-		const b = Math.min(255, (num & 0xFF) + Math.round(255 * 0.8));
+		const r = Math.min(255, ((num >> 16) & 0xff) + Math.round(255 * 0.8));
+		const g = Math.min(255, ((num >> 8) & 0xff) + Math.round(255 * 0.8));
+		const b = Math.min(255, (num & 0xff) + Math.round(255 * 0.8));
 		return `rgb(${r}, ${g}, ${b})`;
 	}
 
@@ -97,14 +108,8 @@
 		layers = layers.map((l) => (l.id === layerId ? { ...l, visible } : l));
 
 		if (visible) {
-			if (layerMetadata[layerId]) return;
-
-			loadingMeta[layerId] = true;
-
-			const meta = await fetchLayerMetadata(layerId, { layerUrl });
-
-			layerMetadata[layerId] = meta;
-			loadingMeta[layerId] = false;
+			const layer = layers.find((l) => l.id === layerId);
+			if (layer) loadLayerInfo(layer);
 		}
 	}
 
@@ -113,9 +118,12 @@
 	}
 </script>
 
-<aside class="sidebar">
+<aside class="sidebar" style="--sector-color: {sectorColor}">
 	<header class="sidebar-header" style:background-color={sectorColor}>
-		<h2 class="sidebar-title"><img src={mapPin} alt="" class="title-icon" style="filter:invert(1);" /> {sectorName} Sector Map</h2>
+		<h2 class="sidebar-title">
+			<img src={mapPin} alt="" class="title-icon" style="filter:invert(1);" />
+			{sectorName} Sector Map
+		</h2>
 		<p class="sidebar-desc">{description}</p>
 	</header>
 
@@ -129,7 +137,7 @@
 				<div class="group">
 					<button
 						class="group-header"
-						style="background-color: {groupBg(group.id, group.title)}; border-color: {openGroups.has(group.id) ? groupColor(group.title) : '#ccc'};"
+						style="background-color: {groupBg(group.id, group.title)};"
 						onclick={() => toggleGroup(group.id)}
 					>
 						<span class="group-title">{group.title}</span>
@@ -144,10 +152,7 @@
 										class="layer-toggle"
 										onclick={() => toggleLayer(layer.id, !layer.visible, layer.url)}
 									>
-										<span
-											class="radio"
-											class:active={layer.visible}
-										>
+										<span class="radio" class:active={layer.visible}>
 											{#if layer.visible}
 												<span class="radio-dot"></span>
 											{/if}
@@ -160,12 +165,11 @@
 											{#if loadingMeta[layer.id]}
 												<p class="meta-loading">Loading…</p>
 											{:else if layerMetadata[layer.id]?.description}
-												<p class="summary-heading">Summary</p>
 												<p class="layer-description">{layerMetadata[layer.id].description}</p>
 											{/if}
 
 											{#if (legendFor(layer.id)?.items ?? []).length > 1}
-												<p class="legend-heading">Legend</p>
+												<p class="legend-heading">{layerAlias[layer.id] ?? 'Legend'}</p>
 												<ul class="legend-list">
 													{#each legendFor(layer.id).items as item (item.label || item.type || i)}
 														<li class="legend-item">
@@ -258,17 +262,18 @@
 		width: 100%;
 		height: 50px;
 		padding: 6px 16px;
-		border: 1px solid;
+		border: 1px solid #000;
+		border-bottom: none;
 		font: inherit;
 		cursor: pointer;
 	}
 
 	.group-title {
-		font-family: 'Source Sans 3', 'Noto Sans', sans-serif;
-		font-weight: 700;
-		font-size: 21px;
+		font-family: 'Source Sans 3', sans-serif;
+		font-weight: 900;
+		font-size: 20px;
 		color: #080808;
-		line-height: 1;
+		line-height: 1.27;
 	}
 
 	.toggle-icon {
@@ -313,29 +318,25 @@
 
 	.radio {
 		flex-shrink: 0;
-		width: 16px;
-		height: 16px;
+		width: 18px;
+		height: 18px;
 		border-radius: 50%;
-		border: 1.5px solid #999;
+		border: 1px solid #000;
+		background: transparent;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		transition: background-color 0.15s, border-color 0.15s;
-	}
-
-	.radio.active {
-		border-color: #555;
 	}
 
 	.radio-dot {
-		width: 8px;
-		height: 8px;
+		width: 10px;
+		height: 10px;
 		border-radius: 50%;
-		background: #555;
+		background: #c7c7c7;
 	}
 
 	.layer-name {
-		font-family: 'Source Sans 3', 'Noto Sans', sans-serif;
+		font-family: 'Source Sans 3', sans-serif;
 		font-weight: 300;
 		font-size: 20px;
 		color: #000;
@@ -351,15 +352,6 @@
 		font-size: 0.8rem;
 		color: #999;
 		font-style: italic;
-	}
-
-	.summary-heading {
-		margin: 0.25rem 0 0.15rem;
-		font-size: 0.75rem;
-		font-weight: 700;
-		color: #666;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
 	}
 
 	.layer-description {

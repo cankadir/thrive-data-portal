@@ -1,0 +1,131 @@
+{
+  "grey": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.6880070567131042,
+        0.6880070567131042,
+        0.6880070567131042
+      ],
+      "alpha": 1,
+      "hex": "#AFAFAF"
+    },
+    "$extensions": {
+      "com.figma.variableId": "VariableID:910:1339",
+      "com.figma.scopes": [
+        "ALL_SCOPES"
+      ]
+    }
+  },
+  "Font": {
+    "Family": {
+      "h": {
+        "$type": "string",
+        "$value": "Montserrat",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:800:509",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ],
+          "com.figma.type": "string"
+        }
+      },
+      "serif": {
+        "$type": "string",
+        "$value": "EB Garamond",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:800:530",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ],
+          "com.figma.type": "string"
+        }
+      },
+      "p": {
+        "$type": "string",
+        "$value": "Montserrat",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:800:511",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ],
+          "com.figma.type": "string"
+        }
+      }
+    },
+    "Weight": {
+      "Bold": {
+        "$type": "string",
+        "$value": "Bold",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:800:516",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ],
+          "com.figma.type": "string"
+        }
+      },
+      "Medium": {
+        "$type": "string",
+        "$value": "medium",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:800:520",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ],
+          "com.figma.type": "string"
+        }
+      },
+      "Regular": {
+        "$type": "string",
+        "$value": "Regular",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:800:524",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ],
+          "com.figma.type": "string"
+        }
+      }
+    },
+    "Style": {
+      "Italic": {
+        "$type": "string",
+        "$value": "italic",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:800:525",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ],
+          "com.figma.type": "string"
+        }
+      },
+      "underline": {
+        "$type": "string",
+        "$value": "underline",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:800:529",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ],
+          "com.figma.type": "string"
+        }
+      },
+      "hyperlink": {
+        "$type": "string",
+        "$value": "underline",
+        "$extensions": {
+          "com.figma.variableId": "VariableID:800:531",
+          "com.figma.scopes": [
+            "ALL_SCOPES"
+          ],
+          "com.figma.type": "string"
+        }
+      }
+    }
+  },
+  "$extensions": {
+    "com.figma.modeName": "desktop"
+  }
+}

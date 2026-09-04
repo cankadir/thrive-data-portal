@@ -10,6 +10,50 @@ const cache = new Map();
 /** @type {Map<string, Promise<{ id: number, name: string }[]>>} */
 const serviceCatalogCache = new Map();
 
+/** @type {Map<string, Promise<string | null>>} */
+const visualFieldCache = new Map();
+
+/**
+ * Resolve the alias of the field a layer is visually symbolized by
+ * (e.g. a unique-value renderer on `Pub_Access` -> "Public Access").
+ * @param {string} layerId
+ * @param {{ layerUrl?: string | null }} [options]
+ * @returns {Promise<string | null>}
+ */
+export async function fetchLayerVisualFieldAlias(layerId, options = {}) {
+	if (!layerId) return null;
+
+	const cacheKey = `${layerId}:${options.layerUrl ?? ''}`;
+	if (visualFieldCache.has(cacheKey)) {
+		return visualFieldCache.get(cacheKey);
+	}
+
+	const request = (async () => {
+		const view = get(mapView);
+		const layer = view?.map?.findLayerById(layerId);
+
+		if (!layer) return null;
+
+		try {
+			await layer.load();
+		} catch (error) {
+			console.warn('[Layer metadata] Failed to load layer:', layerId, error);
+		}
+
+		const renderer = layer.renderer;
+		const fieldName = renderer?.field1 ?? renderer?.field ?? renderer?.field2;
+		if (!fieldName) return null;
+
+		const field = (layer.fields ?? []).find(
+			(/** @type {{ name: string }} */ f) => f.name === fieldName
+		);
+		return field?.alias || fieldName || null;
+	})();
+
+	visualFieldCache.set(cacheKey, request);
+	return request;
+}
+
 /**
  * Fetch layer-specific description + copyright using the live ArcGIS layer.
  * @param {string} layerId
@@ -41,11 +85,6 @@ export async function fetchLayerMetadata(layerId, options = {}) {
 		}
 
 		const candidateUrls = collectMetadataUrls(layer, options.layerUrl);
-		console.log('[Layer metadata]', layer.title || layerId, {
-			candidateUrls,
-			layerUrl: layer.url,
-			sublayerId: layer.layerId ?? layer.sourceJSON?.id ?? null
-		});
 
 		for (const metadataUrl of candidateUrls) {
 			const restMetadata = await fetchSublayerRest(metadataUrl);
@@ -239,4 +278,5 @@ function isSharedFeatureServiceLayer(layer) {
 export function clearSublayerMetadataCache() {
 	cache.clear();
 	serviceCatalogCache.clear();
+	visualFieldCache.clear();
 }
