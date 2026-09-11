@@ -1,12 +1,8 @@
 <script>
-	import { page } from '$app/state';
 	import favicon from '$lib/assets/favicon.svg';
 	import HeaderNav from '$lib/components/HeaderNav.svelte';
-	import { approvedTools } from '$lib/store';
 
-	let { children, data } = $props();
-
-	approvedTools.set(data.approvedTools);
+	let { children } = $props();
 </script>
 
 <svelte:head>

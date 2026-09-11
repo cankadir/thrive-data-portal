@@ -1,16 +1,27 @@
 <script>
 	import { maps } from '$lib/store';
-	import thriveLogo from '$lib/assets/thrive-logo.png';
-	import mapPinIcon from '$lib/assets/icons/icon/map-pin.png';
-	import targetIcon from '$lib/assets/icons/icon/target.png';
-	import chartIcon from '$lib/assets/icons/icon/line-chart.png';
-	import cursorIcon from '$lib/assets/icons/icon/navigation-cursor.png';
+	import thriveLogo from '$lib/assets/thrive-logo-color.svg';
+	import goToIcon from '$lib/assets/icons/go-to.svg';
+	import responsibleGrowthIcon from '$lib/assets/icons/sector/responsible-growth.svg';
+	import naturalTreasuresIcon from '$lib/assets/icons/sector/natural-treasures.svg';
+	import transportationIcon from '$lib/assets/icons/sector/transportation-infrastructure.svg';
+	import communityProsperityIcon from '$lib/assets/icons/sector/community-prosperity.svg';
 
 	const sectors = [
-		{ id: 'responsible-growth', color: '#f68a46', icon: chartIcon },
-		{ id: 'natural-treasures', color: '#a9b54d', icon: mapPinIcon },
-		{ id: 'transportation-infrastructure', color: '#33a5b9', icon: cursorIcon },
-		{ id: 'community-prosperity', color: '#81749a', icon: targetIcon }
+		{ id: 'responsible-growth', color: '#f68a46', button: '#f8a16b', icon: responsibleGrowthIcon },
+		{ id: 'natural-treasures', color: '#a9b54d', button: '#bec77a', icon: naturalTreasuresIcon },
+		{
+			id: 'transportation-infrastructure',
+			color: '#33a5b9',
+			button: '#66bccb',
+			icon: transportationIcon
+		},
+		{
+			id: 'community-prosperity',
+			color: '#81749a',
+			button: '#a197b3',
+			icon: communityProsperityIcon
+		}
 	];
 </script>
 
@@ -25,42 +36,45 @@
 		<div class="wrap">
 			<div class="steps-grid">
 				<div class="step">
-					<p class="step-head">① See the work that's happening across the region</p>
-					<a class="card card-yellow" href="/regional-activity">
-						<h2>Regional Activity Map</h2>
-						<ul>
-							<li>What, where + how work is getting done</li>
-							<li>
-								Participate, add your projects to the map: <span class="link">www.link.com</span>
-							</li>
-						</ul>
-					</a>
-				</div>
-
-				<div class="step">
-					<p class="step-head">② Understand the state of the region across 4 sectors</p>
+					<p class="step-head">① Understand the state of the region across 4 sectors</p>
 					<div class="sector-card">
+						<p class="sector-head">Sector Profile Maps</p>
 						{#each sectors as sector (sector.id)}
-							<a
-								class="sector-row"
-								href="/maps/{sector.id}"
-								style="background-color: {sector.color}"
-							>
-								<img src={sector.icon} alt="" />
-								<span>{maps[sector.id].title}</span>
+							<a class="sector-row" href="/maps/{sector.id}">
+								<img class="sector-icon" src={sector.icon} alt="" />
+								<span class="sector-label">{maps[sector.id].title}</span>
+								<span class="go-btn" style="background-color: {sector.button}">
+									<img src={goToIcon} alt="" />
+								</span>
 							</a>
 						{/each}
 					</div>
 				</div>
 
 				<div class="step">
+					<p class="step-head">② See the work that's happening across the region</p>
+					<a class="card" href="/regional-activity">
+						<h2>Regional Activity Map</h2>
+						<hr />
+						<p>See what, where + how work is getting done across the region.</p>
+						<p>
+							Participate:<br />
+							add your projects to the map: <span class="link">www.link.com</span>
+						</p>
+						<span class="go-btn card-cta"><img src={goToIcon} alt="" /></span>
+					</a>
+				</div>
+
+				<div class="step">
 					<p class="step-head">③ Go deep into data and more analysis</p>
-					<a class="card card-yellow" href="/resources">
+					<a class="card" href="/resources">
 						<h2>Resource library</h2>
+						<hr />
 						<p>
 							Find interactive maps and apps, tools, storymaps and more that provide deep dives into
 							the topics data and analysis
 						</p>
+						<span class="go-btn card-cta"><img src={goToIcon} alt="" /></span>
 					</a>
 				</div>
 			</div>
@@ -120,14 +134,13 @@
 	}
 
 	.wrap {
-		max-width: 1144px;
+		width: min(1144px, calc(100% - 64px));
 		margin: 0 auto;
-		padding: 0 32px;
 	}
 
 	/* Hero */
 	.hero {
-		padding: 120px 0 64px;
+		padding: 200px 0 64px;
 	}
 
 	.hero h1 {
@@ -140,124 +153,153 @@
 
 	/* 1-2-3 cards */
 	.steps {
-		padding-bottom: 32px;
+		padding: 32px 0 64px;
 	}
 
 	.steps-grid {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: 32px;
+		align-items: stretch;
 	}
 
 	.step {
 		display: flex;
 		flex-direction: column;
+		min-width: 0;
 	}
 
 	.step-head {
-		margin: 0 0 12px;
+		display: flex;
+		align-items: flex-start;
+		min-height: 77px;
+		margin: 0 0 8px;
 		font-size: 22px;
 		font-weight: 900;
 		line-height: 26px;
 		color: #444;
 	}
 
-	.card {
-		display: block;
-		border: 1px solid #000;
-		border-radius: 16px;
-		padding: 14px 16px;
-		text-decoration: none;
-		color: #000;
-		transition:
-			box-shadow 0.15s ease,
-			transform 0.15s ease;
-	}
-
-	.card:hover,
-	.card:focus-visible {
-		box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
-		transform: translateY(-2px);
-	}
-
-	.card-yellow {
-		background: #ffc425;
-	}
-
-	.card h2 {
-		margin: 0 0 12px;
-		font-size: 22px;
-		font-weight: 900;
-		line-height: 32px;
-	}
-
-	.card p,
-	.card ul {
-		margin: 0;
-		font-size: 20px;
-		font-weight: 400;
-		line-height: 26px;
-	}
-
-	.card ul {
-		padding-left: 1.2em;
-	}
-
-	.card li {
-		margin-bottom: 4px;
-	}
-
-	.link {
-		text-decoration: underline;
-	}
-
-	/* Sector card */
+	/* Sector Profile Maps card */
 	.sector-card {
 		display: flex;
 		flex-direction: column;
+		flex: 1;
+		min-width: 0;
+	}
+
+	.sector-head {
+		display: flex;
+		align-items: center;
+		margin: 0;
+		padding: 4px 12px;
+		min-height: 56px;
+		background: #ffc425;
+		border: 1px solid #000;
+		border-radius: 16px 16px 0 0;
+		font-size: 20px;
+		font-weight: 900;
+		line-height: 22px;
 	}
 
 	.sector-row {
-		position: relative;
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		padding: 8px 16px;
+		flex: 1;
+		padding: 4px 12px;
 		border: 1px solid #000;
+		border-top: none;
 		text-decoration: none;
 		color: #000;
-		font-size: 22px;
-		font-weight: 900;
-		line-height: 24px;
-		transition:
-			box-shadow 0.15s ease,
-			filter 0.15s ease;
-	}
-
-	.sector-row:hover,
-	.sector-row:focus-visible {
-		box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
-		filter: brightness(1.05);
-		z-index: 1;
-	}
-
-	.sector-row + .sector-row {
-		border-top: none;
-	}
-
-	.sector-row:first-child {
-		border-radius: 16px 16px 0 0;
 	}
 
 	.sector-row:last-child {
 		border-radius: 0 0 16px 16px;
 	}
 
-	.sector-row img {
+	.sector-icon {
 		width: 30px;
 		height: 30px;
 		flex-shrink: 0;
 		object-fit: contain;
+	}
+
+	.sector-label {
+		flex: 1;
+		min-width: 0;
+		font-size: 20px;
+		font-weight: 900;
+		line-height: 22px;
+	}
+
+	/* Yellow cards */
+	.card {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		flex: 1;
+		min-width: 0;
+		padding: 14px 16px 16px;
+		background: #ffc425;
+		border: 1px solid #000;
+		border-radius: 16px;
+		text-decoration: none;
+		color: #000;
+	}
+
+	.card h2 {
+		margin: 8px 0 0;
+		font-size: 22px;
+		font-weight: 900;
+		line-height: 32px;
+	}
+
+	.card hr {
+		margin: 0;
+		width: 314px;
+		max-width: 100%;
+		border: none;
+		border-top: 1px solid #000;
+	}
+
+	.card p {
+		margin: 0;
+		font-size: 20px;
+		font-weight: 400;
+		line-height: 26px;
+	}
+
+	.link {
+		text-decoration: underline;
+	}
+
+	/* Go-to arrow button */
+	.go-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 32px;
+		height: 32px;
+		flex-shrink: 0;
+		background: #ffdc7c;
+		border: 1px solid #000;
+		border-radius: 8px;
+	}
+
+	.go-btn img {
+		width: 20px;
+		height: 20px;
+	}
+
+	.card-cta {
+		margin-top: auto;
+		align-self: flex-end;
+	}
+
+	.card:hover .go-btn,
+	.sector-row:hover .go-btn {
+		filter: brightness(0.94);
 	}
 
 	.steps-foot {
@@ -268,9 +310,12 @@
 		color: #444;
 	}
 
-	/* About */
+	/* About (full-width yellow band) */
 	.about {
-		padding: 64px 0;
+		background: #ffc425;
+		border-top: 1px solid #000;
+		border-bottom: 1px solid #000;
+		padding: 48px 0 96px;
 	}
 
 	.about-grid {
@@ -281,8 +326,8 @@
 	}
 
 	.about-text h2 {
-		margin: 0 0 24px;
-		font-size: 32px;
+		margin: 0 0 32px;
+		font-size: 36px;
 		font-weight: 900;
 		line-height: 48px;
 	}
@@ -302,7 +347,7 @@
 	}
 
 	.about-text hr {
-		margin: 24px 0;
+		margin: 24px 0 16px;
 		border: none;
 		border-top: 1px solid #000;
 	}
@@ -316,14 +361,13 @@
 	.about-placeholder {
 		height: 359px;
 		border-radius: 16px;
-		background: #f0f0f0;
+		background: #ffd051;
 		box-shadow: 8px 8px 4px 0 rgba(0, 0, 0, 0.25);
-		opacity: 0.6;
 	}
 
 	/* Tagline */
 	.tagline {
-		padding: 32px 0 64px;
+		padding: 48px 0 96px;
 		text-align: right;
 	}
 
@@ -344,17 +388,17 @@
 
 	/* Footer */
 	.footer {
-		padding: 32px 12px 48px;
+		padding: 32px;
 	}
 
 	.footer hr {
-		margin: 0 0 24px;
+		margin: 0 0 32px;
 		border: none;
 		border-top: 1px solid #000;
 	}
 
 	.footer img {
-		height: 72px;
+		height: 101px;
 		width: auto;
 	}
 

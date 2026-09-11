@@ -1,5 +1,5 @@
 <script>
-	import { approvedTools } from '$lib/store';
+	import { page } from '$app/state';
 	import ResourceCard from '$lib/components/ResourceCard.svelte';
 	import ThinkingIndicator from '$lib/components/ThinkingIndicator.svelte';
 
@@ -11,16 +11,18 @@
 	let error = $state('');
 	let outOfContext = $state(false);
 
+	const approvedTools = $derived(page.data.approvedTools ?? []);
+
 	const toolsById = $derived.by(() => {
 		const map = new Map();
-		for (const tool of $approvedTools) {
+		for (const tool of approvedTools) {
 			map.set(tool.attributes.globalid || tool.attributes.objectid, tool);
 		}
 		return map;
 	});
 
 	const visibleTools = $derived.by(() => {
-		if (!rankedIds || rankedIds.length === 0) return $approvedTools;
+		if (!rankedIds || rankedIds.length === 0) return approvedTools;
 		return rankedIds.map((id) => toolsById.get(id)).filter(Boolean);
 	});
 
@@ -42,7 +44,7 @@
 			const res = await fetch('/api/search-resources', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ query: q, tools: $approvedTools })
+				body: JSON.stringify({ query: q, tools: approvedTools })
 			});
 			const data = await res.json();
 			if (!res.ok) {
@@ -131,7 +133,7 @@
 			? `Try a query about regional planning or the resources in this library.`
 			: submitted
 				? `${visibleTools.length} results for "${submitted}"`
-				: `${$approvedTools.length} approved tools in the resource library.`}
+				: `${approvedTools.length} approved tools in the resource library.`}
 		{#if submitted}
 			<button class="reset" type="button" onclick={clearSearch}>Clear</button>
 		{/if}
