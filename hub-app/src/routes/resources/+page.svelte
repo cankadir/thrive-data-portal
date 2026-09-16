@@ -2,6 +2,21 @@
 	import { page } from '$app/state';
 	import ResourceCard from '$lib/components/ResourceCard.svelte';
 	import ThinkingIndicator from '$lib/components/ThinkingIndicator.svelte';
+	import thriveLogo from '$lib/assets/thrive-logo.svg';
+
+	const PROMPTS = [
+		'Where are freight bottlenecks?',
+		"I'm working on health care access.",
+		"I'm looking for demographic data.",
+		'Where is population growing the fastest?',
+		'Does everyone in the region have access to broadband?',
+		'Where are utility costs rising?',
+		'Are senior services meeting needs in my area?',
+		'What areas are most important to conserve for biodiversity?',
+		'Where are at risk species?',
+		'Where are invasive species a problem?',
+		'Where are there gaps in health insurance and access to health care?'
+	];
 
 	let query = $state('');
 	let submitted = $state('');
@@ -11,19 +26,65 @@
 	let error = $state('');
 	let outOfContext = $state(false);
 
+	let typed = $state('');
+	let focused = $state(false);
+
 	const approvedTools = $derived(page.data.approvedTools ?? []);
 
 	const toolsById = $derived.by(() => {
-		const map = new Map();
+		const map = {};
 		for (const tool of approvedTools) {
-			map.set(tool.attributes.globalid || tool.attributes.objectid, tool);
+			map[tool.attributes.globalid || tool.attributes.objectid] = tool;
 		}
 		return map;
 	});
 
 	const visibleTools = $derived.by(() => {
 		if (!rankedIds || rankedIds.length === 0) return approvedTools;
-		return rankedIds.map((id) => toolsById.get(id)).filter(Boolean);
+		return rankedIds.map((id) => toolsById[id]).filter(Boolean);
+	});
+
+	$effect(() => {
+		if (query || focused) return;
+
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			typed = PROMPTS[0];
+			return;
+		}
+
+		let promptIndex = 0;
+		let charIndex = 0;
+		let deleting = false;
+		let timer;
+
+		const tick = () => {
+			const full = PROMPTS[promptIndex];
+
+			if (deleting) {
+				charIndex -= 1;
+				typed = full.slice(0, charIndex);
+				if (charIndex === 0) {
+					deleting = false;
+					promptIndex = (promptIndex + 1) % PROMPTS.length;
+					timer = setTimeout(tick, 400);
+				} else {
+					timer = setTimeout(tick, 25);
+				}
+				return;
+			}
+
+			charIndex += 1;
+			typed = full.slice(0, charIndex);
+			if (charIndex === full.length) {
+				deleting = true;
+				timer = setTimeout(tick, 1800);
+			} else {
+				timer = setTimeout(tick, 55);
+			}
+		};
+
+		tick();
+		return () => clearTimeout(timer);
 	});
 
 	async function submit() {
@@ -73,200 +134,209 @@
 </script>
 
 <div class="hub">
-	<div class="hero">
-		<div class="hero-text">
-			<h1 class="hero-title">Thrive Resource Hub</h1>
-			<p class="hero-lead">
-				Eget feugiat sapien diam nec nisl. Aenean gravida turpis nisi, consequat dictum risus
-				dapibus.
-			</p>
-			<p class="hero-body">
-				Duis felis ante, varius in neque eu, tempor suscipit sem. Maecenas ullamcorper gravida sem
-				sit amet cursus. Etiam pulvinar purus vitae justo pharetra consequat. Mauris id mi ut arcu
-				feugiat maximus. Mauris consequat tellus id tempus aliquet. Nam pulvinar blandit velit, id
-				condimentum diam faucibus at.
-			</p>
-			<p class="hero-body">
-				Proin vitae facilisis nisi, ac posuere leo. Quisque mauris dolor, fringilla sed. Aliquam
-				lacus nisi, sollicitudin at nisi nec, fermentum congue felis.
-			</p>
-		</div>
-	</div>
+	<section class="headline">
+		<div class="wrap">
+			<h1>Resource Library</h1>
+			<p class="lead">What are you working on today?</p>
 
-	<form
-		class="search"
-		onsubmit={(e) => {
-			e.preventDefault();
-			submit();
-		}}
-	>
-		<input
-			type="search"
-			placeholder="Search resources..."
-			aria-label="Search resources"
-			bind:value={query}
-		/>
-		<button type="submit" class="search-btn" disabled={loading}>
-			{loading ? 'Searching...' : 'Search'}
-		</button>
-	</form>
+			<form
+				class="search"
+				onsubmit={(e) => {
+					e.preventDefault();
+					submit();
+				}}
+			>
+				<div class="search-box">
+					<input
+						type="search"
+						aria-label="Search resources"
+						bind:value={query}
+						onfocus={() => (focused = true)}
+						onblur={() => (focused = false)}
+					/>
+					{#if !query && !focused}
+						<span class="typewriter" aria-hidden="true">{typed}<span class="caret"></span></span>
+					{/if}
+				</div>
+			</form>
 
-	{#if submitted}
-		<div class="results-info">
-			{#if loading}
-				<ThinkingIndicator />
-			{/if}
-			{#if outOfContext}
-				<p class="ooc">Query out of Context</p>
-			{/if}
-			{#if reasoning}
-				<p class="reasoning"><span class="reasoning-label">Why these results:</span> {reasoning}</p>
-			{/if}
-			{#if error}
-				<p class="error">{error}</p>
+			{#if submitted}
+				<div class="search-return">
+					{#if loading}
+						<ThinkingIndicator />
+					{:else if error}
+						<p class="search-error">{error}</p>
+					{:else if outOfContext}
+						<p>
+							<span class="return-label">Search return:</span>
+							Query out of Context. Try a query about regional planning or the resources in this library.
+						</p>
+					{:else if reasoning}
+						<p><span class="return-label">Search return:</span> {reasoning}</p>
+					{/if}
+
+					<p class="results-meta">
+						{visibleTools.length} results for "{submitted}"
+						<button class="clear" type="button" onclick={clearSearch}>Clear</button>
+					</p>
+				</div>
 			{/if}
 		</div>
-	{/if}
+	</section>
 
-	<p class="hub-count">
-		{outOfContext
-			? `Try a query about regional planning or the resources in this library.`
-			: submitted
-				? `${visibleTools.length} results for "${submitted}"`
-				: `${approvedTools.length} approved tools in the resource library.`}
-		{#if submitted}
-			<button class="reset" type="button" onclick={clearSearch}>Clear</button>
+	<section class="cards">
+		{#if visibleTools.length > 0}
+			<div class="grid">
+				{#each visibleTools as tool (tool.attributes.globalid || tool.attributes.objectid)}
+					<ResourceCard {tool} />
+				{/each}
+			</div>
 		{/if}
-	</p>
+	</section>
 
-	{#if visibleTools.length > 0}
-		<div class="card-grid">
-			{#each visibleTools as tool (tool.attributes.globalid || tool.attributes.objectid)}
-				<ResourceCard {tool} />
-			{/each}
+	<section class="tagline">
+		<div class="wrap">
+			<h2>more info about resource library</h2>
+			<p>
+				Provide links back to other parts of resource hub here as well as link to data only page
+				where users can filter, search for, and download data
+			</p>
 		</div>
-	{/if}
+	</section>
+
+	<footer class="footer">
+		<img src={thriveLogo} alt="Thrive Regional Partnership" />
+	</footer>
 </div>
 
 <style>
 	.hub {
-		background: #d6d6ce;
-		padding: 3rem 3rem 4rem;
+		background: #e0e0d9;
+		min-height: 100vh;
+		color: #000;
 	}
 
-	.hero {
+	.wrap {
+		width: min(1144px, calc(100% - 64px));
+		margin: 0 auto;
+	}
+
+	/* Headline */
+	.headline {
+		padding: 42px 0 0;
+	}
+
+	.headline .wrap {
 		display: flex;
-		max-width: 1500px;
-		margin: 0 auto 2.5rem;
+		flex-direction: column;
+		gap: 26px;
 	}
 
-	.hero-text {
-		max-width: 900px;
+	.headline h1 {
+		margin: 0;
+		font-size: clamp(44px, 5vw, 64px);
+		font-weight: 900;
+		line-height: 1.05;
 	}
 
-	.hero-title {
-		margin: 0 0 1.5rem;
-		font-size: 4rem;
+	.lead {
+		margin: 0;
+		font-size: 20px;
+		font-weight: 900;
+		line-height: 28px;
+	}
+
+	/* Search */
+	.search-box {
+		position: relative;
+		--search-font: clamp(22px, 1.4vw + 10px, 32px);
+	}
+
+	.search-box input {
+		width: 100%;
+		padding: 0.375em 0.625em;
+		font-family: inherit;
+		font-size: var(--search-font);
+		font-weight: 900;
 		line-height: 1.1;
-	}
-
-	.hero-lead {
-		margin: 0 0 1rem;
-		font-size: 1.25rem;
-		font-weight: 900;
-		line-height: 1.4;
-	}
-
-	.hero-body {
-		margin: 0 0 0.75rem;
-		font-size: 1.25rem;
-		font-weight: 300;
-		line-height: 1.4;
-	}
-
-	.search {
-		display: flex;
-		gap: 0.75rem;
-		max-width: 760px;
-		margin: 0 auto 0.75rem;
-	}
-
-	.search input {
-		flex: 1;
-		padding: 0.75rem 1.25rem;
-		font-family: 'Source Sans 3', sans-serif;
-		font-size: 1.1rem;
-		border: 2px solid #656364;
-		border-radius: 999px;
+		color: #000;
 		background: #fff;
-	}
-
-	.search-btn {
-		padding: 0.75rem 1.5rem;
-		font-family: 'Source Sans 3', sans-serif;
-		font-size: 1.1rem;
-		font-weight: 900;
-		color: #fff;
-		background: #3064b2;
 		border: none;
-		border-radius: 999px;
-		cursor: pointer;
+		border-radius: 0.78em;
+		outline: none;
 	}
 
-	.search-btn:disabled {
-		opacity: 0.6;
-		cursor: default;
+	.search-box input:focus {
+		box-shadow: 0 0 0 2px #3064b2;
 	}
 
-	.results-info {
-		max-width: 760px;
-		margin: 0 auto 1rem;
+	.typewriter {
+		position: absolute;
+		top: 50%;
+		left: 0.625em;
+		transform: translateY(-50%);
+		overflow: hidden;
+		max-width: calc(100% - 1.25em);
+		font-size: var(--search-font);
+		font-weight: 600;
+		line-height: 1.1;
+		color: #b6b3a7;
+		white-space: nowrap;
+		pointer-events: none;
 	}
 
-	.reasoning {
+	.caret {
+		display: inline-block;
+		width: 2px;
+		height: 1em;
+		margin-left: 2px;
+		background: currentColor;
+		vertical-align: -0.12em;
+		animation: blink 1s steps(1) infinite;
+	}
+
+	@keyframes blink {
+		50% {
+			opacity: 0;
+		}
+	}
+
+	/* Search return */
+	.search-return {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		font-size: 20px;
+		line-height: 28px;
+	}
+
+	.search-return p {
 		margin: 0;
-		padding: 0.75rem 1.25rem;
-		background: #ececec;
-		border-radius: 12px;
-		font-size: 0.95rem;
-		line-height: 1.4;
 	}
 
-	.reasoning-label {
-		font-weight: 900;
+	.return-label {
+		font-weight: 600;
 	}
 
-	.ooc {
-		margin: 0;
-		padding: 0.75rem 1.25rem;
-		background: #fff6dd;
-		color: #8a6d00;
-		border-radius: 12px;
-		font-size: 1.05rem;
-		font-weight: 900;
-		text-align: center;
-	}
-
-	.error {
-		margin: 0;
-		padding: 0.75rem 1.25rem;
+	.search-error {
+		padding: 12px 18px;
 		background: #ffeae6;
-		color: #f05133;
 		border-radius: 12px;
-		font-weight: 700;
+		color: #f05133;
+		font-weight: 600;
 	}
 
-	.hub-count {
-		max-width: 1500px;
-		margin: 0 auto 1.5rem;
+	.results-meta {
+		font-size: 16px;
 		color: #656364;
 	}
 
-	.reset {
-		margin-left: 0.75rem;
-		padding: 2px 10px;
+	.clear {
+		margin-left: 8px;
+		padding: 2px 12px;
 		font-family: inherit;
-		font-weight: 900;
+		font-size: 14px;
+		font-weight: 600;
 		color: #3064b2;
 		background: none;
 		border: 2px solid #3064b2;
@@ -274,11 +344,61 @@
 		cursor: pointer;
 	}
 
-	.card-grid {
+	/* Cards */
+	.cards {
+		padding: 32px 0 0;
+	}
+
+	.grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-		gap: 1.75rem;
-		max-width: 1500px;
+		gap: 24px;
+		width: min(1512px, calc(100% - 88px));
 		margin: 0 auto;
+	}
+
+	/* Tagline */
+	.tagline {
+		padding: 48px 0 96px;
+	}
+
+	.tagline .wrap {
+		display: flex;
+		flex-direction: column;
+		gap: 36px;
+		align-items: flex-end;
+		padding: 48px 24px;
+		text-align: right;
+	}
+
+	.tagline h2 {
+		margin: 0;
+		font-size: clamp(32px, 4vw, 48px);
+		font-weight: 900;
+		line-height: 48px;
+	}
+
+	.tagline p {
+		margin: 0;
+		max-width: 858px;
+		font-size: 20px;
+		line-height: 28px;
+	}
+
+	/* Footer */
+	.footer {
+		padding: 35px 47px 36px;
+	}
+
+	.footer img {
+		width: 269px;
+		height: auto;
+	}
+
+	@media (max-width: 900px) {
+		.tagline .wrap {
+			align-items: flex-start;
+			text-align: left;
+		}
 	}
 </style>

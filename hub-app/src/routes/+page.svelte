@@ -1,28 +1,8 @@
 <script>
 	import { maps } from '$lib/store';
-	import thriveLogo from '$lib/assets/thrive-logo-color.svg';
+	import { sectors } from '$lib/sectors';
+	import thriveLogo from '$lib/assets/thrive-logo.svg';
 	import goToIcon from '$lib/assets/icons/go-to.svg';
-	import responsibleGrowthIcon from '$lib/assets/icons/sector/responsible-growth.svg';
-	import naturalTreasuresIcon from '$lib/assets/icons/sector/natural-treasures.svg';
-	import transportationIcon from '$lib/assets/icons/sector/transportation-infrastructure.svg';
-	import communityProsperityIcon from '$lib/assets/icons/sector/community-prosperity.svg';
-
-	const sectors = [
-		{ id: 'responsible-growth', color: '#f68a46', button: '#f8a16b', icon: responsibleGrowthIcon },
-		{ id: 'natural-treasures', color: '#a9b54d', button: '#bec77a', icon: naturalTreasuresIcon },
-		{
-			id: 'transportation-infrastructure',
-			color: '#33a5b9',
-			button: '#66bccb',
-			icon: transportationIcon
-		},
-		{
-			id: 'community-prosperity',
-			color: '#81749a',
-			button: '#a197b3',
-			icon: communityProsperityIcon
-		}
-	];
 </script>
 
 <main class="landing">
@@ -40,7 +20,11 @@
 					<div class="sector-card">
 						<p class="sector-head">Sector Profile Maps</p>
 						{#each sectors as sector (sector.id)}
-							<a class="sector-row" href="/maps/{sector.id}">
+							<a
+								class="sector-row"
+								href="/maps/{sector.id}"
+								style="background-color: {sector.color}"
+							>
 								<img class="sector-icon" src={sector.icon} alt="" />
 								<span class="sector-label">{maps[sector.id].title}</span>
 								<span class="go-btn" style="background-color: {sector.button}">

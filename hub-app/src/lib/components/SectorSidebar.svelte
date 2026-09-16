@@ -7,7 +7,7 @@
 
 	let {
 		sectorName = 'Sector',
-		sectorColor = '#588c02',
+		sectorColor = '#a9b54d',
 		description = 'Rorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam eu turpis molestie, dictum est a, mattis tellus.'
 	} = $props();
 
@@ -80,15 +80,10 @@
 		return /cross.?sector/i.test(title);
 	}
 
-	function groupColor(title) {
-		return sectorColor;
-	}
-
 	function groupBg(id, title) {
 		if (!openGroups.has(id)) return 'transparent';
-		const c = groupColor(title);
 		if (isCrossSector(title)) return '#f68a46';
-		const num = parseInt(c.replace('#', ''), 16);
+		const num = parseInt(sectorColor.replace('#', ''), 16);
 		const r = Math.min(255, ((num >> 16) & 0xff) + Math.round(255 * 0.8));
 		const g = Math.min(255, ((num >> 8) & 0xff) + Math.round(255 * 0.8));
 		const b = Math.min(255, (num & 0xff) + Math.round(255 * 0.8));
@@ -118,7 +113,7 @@
 	}
 </script>
 
-<aside class="sidebar" style="--sector-color: {sectorColor}">
+<aside class="sidebar">
 	<header class="sidebar-header" style:background-color={sectorColor}>
 		<h2 class="sidebar-title">
 			<img src={mapPin} alt="" class="title-icon" style="filter:invert(1);" />
@@ -164,11 +159,16 @@
 										<div class="layer-detail" transition:slide={{ duration: 150 }}>
 											{#if loadingMeta[layer.id]}
 												<p class="meta-loading">Loading…</p>
-											{:else if layerMetadata[layer.id]?.description}
-												<p class="layer-description">{layerMetadata[layer.id].description}</p>
+											{:else}
+												{#if layerMetadata[layer.id]?.summary}
+													<p class="layer-summary">{layerMetadata[layer.id].summary}</p>
+												{/if}
+												{#if layerMetadata[layer.id]?.description}
+													<p class="layer-description">{layerMetadata[layer.id].description}</p>
+												{/if}
 											{/if}
 
-											{#if (legendFor(layer.id)?.items ?? []).length > 1}
+											{#if (legendFor(layer.id)?.items ?? []).length > 0}
 												<p class="legend-heading">{layerAlias[layer.id] ?? 'Legend'}</p>
 												<ul class="legend-list">
 													{#each legendFor(layer.id).items as item (item.label || item.type || i)}
@@ -250,9 +250,6 @@
 		padding: 1rem;
 		color: #888;
 		font-style: italic;
-	}
-
-	.group {
 	}
 
 	.group-header {
@@ -358,6 +355,14 @@
 		margin: 0 0 0.4rem;
 		font-size: 0.82rem;
 		color: #555;
+		line-height: 1.5;
+	}
+
+	.layer-summary {
+		margin: 0 0 0.3rem;
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: #222;
 		line-height: 1.5;
 	}
 

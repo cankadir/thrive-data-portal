@@ -1,15 +1,8 @@
 <script>
 	import { fetchLayerMetadata } from '$lib/map/fetchSublayerMetadata';
 
-	let {
-		title = 'Legend',
-		items = [],
-		layerId = null,
-		layerUrl = null,
-		embedded = false
-	} = $props();
+	let { items = [], layerId = null, layerUrl = null } = $props();
 
-	let open = $state(false);
 	let metadataLoading = $state(false);
 	let metadataLoaded = $state(false);
 	let description = $state(null);
@@ -17,7 +10,6 @@
 
 	const hasLegendItems = $derived(items.length > 0);
 	const hasContent = $derived(hasLegendItems || !!layerId);
-	const isOpen = $derived(embedded || open);
 
 	async function loadMetadata() {
 		if (!layerId || metadataLoaded || metadataLoading) return;
@@ -36,112 +28,61 @@
 		}
 	}
 
-	async function toggleOpen() {
-		if (embedded) return;
-
-		if (open) {
-			open = false;
-			return;
-		}
-
-		open = true;
-		await loadMetadata();
-	}
-
 	$effect(() => {
-		if (embedded && layerId) {
+		if (layerId) {
 			loadMetadata();
 		}
 	});
 </script>
 
 {#if hasContent}
-	<div class="accordion" class:embedded>
-		{#if !embedded}
-			<button type="button" class="accordion-header" onclick={toggleOpen}>
-				<span class="chevron">{isOpen ? '▼' : '▶'}</span>
-				<span>{title}</span>
-			</button>
+	<div class="accordion">
+		{#if layerId}
+			<dl class="metadata">
+				<div class="meta-row">
+					<dt>Description</dt>
+					<dd class="description">
+						{#if metadataLoading}
+							<span class="loading">Loading layer info…</span>
+						{:else if description}
+							{@html description}
+						{:else}
+							None
+						{/if}
+					</dd>
+				</div>
+				<div class="meta-row">
+					<dt>Copyright</dt>
+					<dd>
+						{#if metadataLoading}
+							<span class="loading">Loading layer info…</span>
+						{:else}
+							{copyright || 'None'}
+						{/if}
+					</dd>
+				</div>
+			</dl>
 		{/if}
 
-		{#if isOpen}
-			<div class="content">
-				{#if layerId}
-					<dl class="metadata">
-						<div class="meta-row">
-							<dt>Description</dt>
-							<dd class="description">
-								{#if metadataLoading}
-									<span class="loading">Loading layer info…</span>
-								{:else if description}
-									{@html description}
-								{:else}
-									None
-								{/if}
-							</dd>
-						</div>
-						<div class="meta-row">
-							<dt>Copyright</dt>
-							<dd>
-								{#if metadataLoading}
-									<span class="loading">Loading layer info…</span>
-								{:else}
-									{copyright || 'None'}
-								{/if}
-							</dd>
-						</div>
-					</dl>
-				{/if}
-
-				{#if hasLegendItems}
-					<ul class="legend" class:with-divider={!!layerId}>
-						{#each items as item, index (`${title}-${index}`)}
-							<li class="legend-item">
-								{#if item.previewHtml}
-									<span class="legend-symbol">{@html item.previewHtml}</span>
-								{/if}
-								<span>{item.label || item.type}</span>
-							</li>
-						{/each}
-					</ul>
-				{/if}
-			</div>
+		{#if hasLegendItems}
+			<ul class="legend" class:with-divider={!!layerId}>
+				{#each items as item, index (`${layerId}-${index}`)}
+					<li class="legend-item">
+						{#if item.previewHtml}
+							<span class="legend-symbol">{@html item.previewHtml}</span>
+						{/if}
+						<span>{item.label || item.type}</span>
+					</li>
+				{/each}
+			</ul>
 		{/if}
 	</div>
 {/if}
 
 <style>
 	.accordion {
-		margin-top: 0.35rem;
-		margin-left: 1.5rem;
-		min-width: 0;
-		max-width: 100%;
-	}
-
-	.accordion.embedded {
 		margin-top: 0.5rem;
 		margin-left: 1.25rem;
-	}
-
-	.accordion-header {
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
-		padding: 0;
-		border: none;
-		background: none;
-		font: inherit;
-		font-size: 0.85rem;
-		color: #555;
-		cursor: pointer;
-	}
-
-	.chevron {
-		font-size: 0.65rem;
-	}
-
-	.content {
-		margin-top: 0.35rem;
 		min-width: 0;
 		max-width: 100%;
 	}

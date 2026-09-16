@@ -11,7 +11,7 @@
 	import MapView from '@arcgis/core/views/MapView.js';
 	import '@arcgis/core/assets/esri/themes/light/main.css';
 
-	let { mapId } = $props();
+	let { mapId, defaultExtent = null } = $props();
 
 	/** @param {import('@arcgis/core/views/MapView').default} view */
 	async function extractPanel(view) {
@@ -31,18 +31,35 @@
 		let cancelled = false;
 		let layerWatchHandle;
 
-		/** @param {import('@arcgis/core/views/MapView').default} view */
-		async function zoomToExtent(view, layerTitle) {
+		/**
+		 * Zoom to the `thrive_secondary_boundary` layer when the webmap has it,
+		 * otherwise to the provided fallback extent so every sector map opens
+		 * at the same view.
+		 * @param {import('@arcgis/core/views/MapView').default} view
+		 * @param {object | null} fallbackExtent
+		 */
+		async function zoomToSecondaryBoundary(view, fallbackExtent) {
 			await view.when();
 			if (cancelled) return;
-			const layer = view.map.allLayers.find((l) => l.title === layerTitle || l.id === layerTitle);
-			if (!layer) return;
-			try {
-				await layer.load();
-			} catch {
-				return;
+
+			const layer = view.map.allLayers.find(
+				(l) => l.id === 'thrive_secondary_boundary' || l.title === 'thrive_secondary_boundary'
+			);
+
+			if (layer) {
+				try {
+					await layer.load();
+				} catch {
+					/* fall through to the fallback extent */
+				}
+				if (cancelled) return;
+				if (layer.fullExtent) {
+					view.goTo(layer.fullExtent);
+					return;
+				}
 			}
-			if (layer.fullExtent) view.goTo(layer.fullExtent);
+
+			if (fallbackExtent) view.goTo(fallbackExtent);
 		}
 
 		clearMapState();
@@ -58,7 +75,7 @@
 				view = new MapView({ container, map: webmap });
 				mapView.set(view);
 
-				zoomToExtent(view, 'Thrive County Boundaries');
+				zoomToSecondaryBoundary(view, defaultExtent);
 
 				const [layers, legend] = await extractPanel(view);
 

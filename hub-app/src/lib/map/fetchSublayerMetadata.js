@@ -4,7 +4,7 @@
 import { get } from 'svelte/store';
 import { mapView } from '$lib/mapStore';
 
-/** @type {Map<string, Promise<{ description: string | null, copyright: string | null, source: string }>>} */
+/** @type {Map<string, Promise<{ summary: string | null, description: string | null, copyright: string | null }>>} */
 const cache = new Map();
 
 /** @type {Map<string, Promise<{ id: number, name: string }[]>>} */
@@ -61,7 +61,7 @@ export async function fetchLayerVisualFieldAlias(layerId, options = {}) {
  */
 export async function fetchLayerMetadata(layerId, options = {}) {
 	if (!layerId) {
-		return { description: null, copyright: null, source: 'none' };
+		return { summary: null, description: null, copyright: null };
 	}
 
 	const cacheKey = `${layerId}:${options.layerUrl ?? ''}`;
@@ -75,7 +75,7 @@ export async function fetchLayerMetadata(layerId, options = {}) {
 
 		if (!layer) {
 			console.warn('[Layer metadata] Layer not found:', layerId);
-			return { description: null, copyright: null, source: 'missing-layer' };
+			return { summary: null, description: null, copyright: null };
 		}
 
 		try {
@@ -84,12 +84,14 @@ export async function fetchLayerMetadata(layerId, options = {}) {
 			console.warn('[Layer metadata] Failed to load layer:', layerId, error);
 		}
 
+		const summary = await fetchPortalSummary(layer);
+
 		const candidateUrls = collectMetadataUrls(layer, options.layerUrl);
 
 		for (const metadataUrl of candidateUrls) {
 			const restMetadata = await fetchSublayerRest(metadataUrl);
 			if (restMetadata) {
-				return restMetadata;
+				return { ...restMetadata, summary };
 			}
 		}
 
@@ -98,7 +100,7 @@ export async function fetchLayerMetadata(layerId, options = {}) {
 		if (serviceUrl && layer.title) {
 			const resolved = await fetchMetadataByTitle(serviceUrl, layer.title);
 			if (resolved) {
-				return resolved;
+				return { ...resolved, summary };
 			}
 		}
 
@@ -107,9 +109,9 @@ export async function fetchLayerMetadata(layerId, options = {}) {
 
 		if (sourceDescription || sourceCopyright) {
 			return {
+				summary,
 				description: sourceDescription || null,
-				copyright: sourceCopyright || null,
-				source: 'source-json'
+				copyright: sourceCopyright || null
 			};
 		}
 
@@ -121,9 +123,9 @@ export async function fetchLayerMetadata(layerId, options = {}) {
 
 				if (description) {
 					return {
+						summary,
 						description,
-						copyright: layer.copyright?.trim() || null,
-						source: 'portal-item'
+						copyright: layer.copyright?.trim() || null
 					};
 				}
 			} catch (error) {
@@ -132,14 +134,31 @@ export async function fetchLayerMetadata(layerId, options = {}) {
 		}
 
 		return {
+			summary,
 			description: layer.description?.trim() || null,
-			copyright: layer.copyright?.trim() || null,
-			source: 'layer-props'
+			copyright: layer.copyright?.trim() || null
 		};
 	})();
 
 	cache.set(cacheKey, request);
 	return request;
+}
+
+/**
+ * Portal item "snippet" — the layer summary shown in the panel.
+ * @param {import('@arcgis/core/layers/Layer').default} layer
+ * @returns {Promise<string | null>}
+ */
+async function fetchPortalSummary(layer) {
+	if (!layer?.portalItem) return null;
+
+	try {
+		await layer.portalItem.load();
+		return layer.portalItem.snippet?.trim() || null;
+	} catch (error) {
+		console.warn('[Layer metadata] Portal summary fetch failed:', error);
+		return null;
+	}
 }
 
 /** @param {import('@arcgis/core/layers/Layer').default} layer @param {string | null | undefined} storedUrl */
@@ -197,7 +216,7 @@ async function fetchSublayerRest(metadataUrl) {
 		const copyright = data.copyrightText?.trim() || null;
 
 		if (description || copyright) {
-			return { description, copyright, source: 'sublayer-rest' };
+			return { description, copyright };
 		}
 	} catch (error) {
 		console.warn('[Layer metadata] REST fetch failed:', metadataUrl, error);

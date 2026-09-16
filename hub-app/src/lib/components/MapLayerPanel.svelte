@@ -15,7 +15,11 @@
 		<ul class="layer-list">
 			{#each $mapLayers as layer (layer.id)}
 				{@const legendEntry = $mapLegend.find((entry) => entry.layerId === layer.id)}
-				<li class="layer" class:selected={layer.visible} style:padding-left="{layer.depth * 1.25}rem">
+				<li
+					class="layer"
+					class:selected={layer.visible}
+					style:padding-left="{layer.depth * 1.25}rem"
+				>
 					<button
 						type="button"
 						class="layer-row"
@@ -34,7 +38,6 @@
 								items={legendEntry?.items ?? []}
 								layerId={layer.id}
 								layerUrl={layer.url}
-								embedded
 							/>
 						</div>
 					{/if}

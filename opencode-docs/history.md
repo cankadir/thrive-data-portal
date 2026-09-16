@@ -70,3 +70,56 @@
 - **Store refactor**: removed the `approvedTools` writable store (and the `writable` import); `resources/+page.svelte` now reads `page.data.approvedTools` via `$derived`. This also removed the layout's store-sync `$effect` and the `state_referenced_locally` warning at `+layout.svelte:9`.
 - **Rendering note**: headless Chromium `--screenshot` started hanging in this env; `wkhtmltoimage` works as a fallback (no JS/hover, so limited fidelity).
 - **Files changed**: `hub-app/src/routes/+page.svelte`, `hub-app/src/routes/resources/+page.svelte`, `hub-app/src/routes/+layout.svelte`, `hub-app/src/lib/components/HeaderNav.svelte`, `hub-app/src/lib/store.js`, `hub-app/src/lib/assets/icons/sector/*` (new), `hub-app/src/lib/assets/icons/go-to.svg` (new), `opencode-docs/AGENTS.md`
+
+## 2026-09-16 — Resource Library restyle + search typewriter
+
+- **Figma**: implemented `Resource Library-v2` node `3821:97956` (URL-provided node id). Pulled `get_design_context` for the page headline, the colored card variants (responsible-growth / cp / dataset) and the tagline, plus `get_variable_defs` for the palette. Card colors/icons come from the design tokens, not the old neutral-top + chips treatment.
+- **Layout**: page bg `#e0e0d9`; headline column 1144px; card grid 1512px (4×360 + 24 gap, 44px margins). Right-aligned tagline + color-logo footer mirror the landing page.
+- **`ResourceCard.svelte`**: rewritten to a full-colour sector block (radius 20, `8px 8px 4px` shadow, min-height 300) — sector icon + uppercased `tool_type`, 24/900 title, `summary || field_9` description, Date/Last updated/Sector/Author meta, bottom-right `go-to.svg` button in the sector's lighter shade. First recognised `sector_tags` entry picks the colour/icon; no sector → neutral grey + new `sector/dataset.svg` (curled straight from the Figma MCP asset server).
+- **Search typewriter**: `$effect` types/deletes a rotating prompt list; pauses on focus/non-empty; respects `prefers-reduced-motion`; removed the native placeholder and the visible Search button (Enter submits). Overlay text is grey `#b6b3a7` weight 600 (user follow-up: "lighter and a bit more grey"); caret inherits `currentColor`.
+- **Verified**: `vite build` clean; headless Chromium screenshots at 1600px and 760px match the design (cards, colors, tagline, footer).
+- **Files changed**: `hub-app/src/routes/resources/+page.svelte`, `hub-app/src/lib/components/ResourceCard.svelte`, `hub-app/src/lib/assets/icons/sector/dataset.svg` (new), `opencode-docs/AGENTS.md`
+
+## 2026-09-16 (later) — New Thrive logo (2 Figma pieces → one SVG)
+
+- **User request**: replace the logo using two Figma nodes — mark `3793:120128` and wordmark `3793:120141` — combined into one piece preserving the original width/height.
+- **Composed** `hub-app/src/lib/assets/thrive-logo.svg`: root `width=133.1607 height=39.0658` (`49.6944 + 83.4663` wide, max of mark height `39.0658` and wordmark bottom `7.0759 + 24.9140`). Mark at origin; wordmark at `translate(49.6944 7.0759)`. Downloaded both SVGs from the Figma MCP asset server and stripped `id`/`style` (incl. `fill:color(display-p3 …)`)/`clip-path`/`<defs>` in a small Python composition.
+- **Wired up**: HeaderNav (was png + color-svg ternary), landing footer, resources footer all import `thrive-logo.svg`. Deleted `thrive-logo-color.svg` and `thrive-logo.png`.
+- **Verified**: `vite build` clean; headless Chromium on the existing `:5173` dev server shows the one-piece logo at header (40px) and landing footer (101px).
+- **Files changed**: `hub-app/src/lib/assets/thrive-logo.svg` (new), `hub-app/src/lib/components/HeaderNav.svelte`, `hub-app/src/routes/+page.svelte`, `hub-app/src/routes/resources/+page.svelte`, `opencode-docs/AGENTS.md`
+
+## 2026-09-16 (later still) — Unified sector colours + search bar scaling
+
+- **Sector colours (Figma `1861:34407` dropdown)**: created `src/lib/sectors.js` as the single source of truth (RG `#f68a46`/`#f8a16b`, NT `#a9b54d`/`#bec77a`, TI `#33a5b9`/`#66bccb`, CP `#81749a`/`#a197b3`). Replaced the divergent definitions in `HeaderNav` (NT was `#93a221`), `ResourceCard` (local map) and `store.js` `sectorDefaults` (was a shifted set where RG=blue/TI=orange and NT/CP were darker). Landing/`+page.svelte` consumes the shared list too. Verified `:5173/maps/natural-treasures` — sidebar header + nav "Sector Maps" toggle + resource cards all green `#a9b54d`.
+- **Search bar sizing**: the `@media (max-width: 900px)` font override made the pill jump shorter with an unchanged `25px` radius. Replaced with `--search-font: clamp(22px, 1.4vw + 10px, 32px)` + `em`-based padding (`0.375em 0.625em`) and radius (`0.78em`), so height and corner radius scale smoothly together. Verified at 900px and 1600px.
+- **Files changed**: `hub-app/src/lib/sectors.js` (new), `hub-app/src/lib/store.js`, `hub-app/src/lib/components/HeaderNav.svelte`, `hub-app/src/lib/components/ResourceCard.svelte`, `hub-app/src/lib/components/SectorSidebar.svelte`, `hub-app/src/routes/+page.svelte`, `hub-app/src/routes/resources/+page.svelte`, `opencode-docs/AGENTS.md`
+
+## 2026-09-16 (map panel refinements) — Default zoom, hidden boundary group, legend/summary
+
+- **Default zoom**: added `src/lib/map/secondaryBoundary.js` (`secondaryBoundaryExtent`, the `thrive_secondary_boundary` service full extent in Web Mercator). `ArcGISMap` now takes a `defaultExtent` prop and zooms to the `thrive_secondary_boundary` layer when the webmap has it, else to the constant. `maps/[id]/+page.svelte` passes it. Replaces the old `zoomToExtent(view, 'Thrive County Boundaries')`. (Could not verify in headless Chromium — ArcGIS needs WebGL2, unavailable in the sandbox.)
+- **Hidden reference group**: `extractMapPanelData.js` skips `Thrive boundaries and mask layers` / `Thrive region masks` groups (and their children) in both `flattenOperationalItems` and the `walkMapLayers` fallback — they stay on the map but are no longer editable panel entries.
+- **Legend fix**: `"Trucking Companies"` (simple renderer, one item) was hidden because `SectorSidebar` required `items.length > 1`; changed to `> 0`.
+- **Summary fix**: the layer has no REST `description`; its text is the portal item `snippet`. `fetchLayerMetadata` now returns `summary` (portal item snippet) on every path and `SectorSidebar` renders it above the description.
+- **Files changed**: `hub-app/src/lib/map/secondaryBoundary.js` (new), `hub-app/src/lib/components/ArcGISMap.svelte`, `hub-app/src/lib/map/extractMapPanelData.js`, `hub-app/src/lib/map/fetchSublayerMetadata.js`, `hub-app/src/lib/components/SectorSidebar.svelte`, `hub-app/src/routes/maps/[id]/+page.svelte`, `opencode-docs/AGENTS.md`
+
+## 2026-09-16 (styling audit) — Nav active state + landing sector rows
+
+- Audited the build against `header-v2` (`3830:100645`), landing (`3820:96886`) and Resource Library (`3821:97956`). Implemented the three the user approved; left the rest pending:
+  - **Selector label**: nav's first item shows the active sector's title on sector pages (defaults to Responsible Growth on other non-landing pages) and "Sector Maps" on `/`.
+  - **Active-page highlight**: `HeaderNav` `.nav-item.active` gets `#33a5b9` on `/regional-activity` and `/resources` (per the design's teal Resource Library item).
+  - **Landing sector rows**: each row now has `background-color: sector.color`, matching `3820:96904`.
+- **Not done (user did not approve)**: nav item reorder, landing hero subtitle "Understand the state of the region across 4 sectors", About-band arrow-in-circle icon.
+- **Files changed**: `hub-app/src/lib/components/HeaderNav.svelte`, `hub-app/src/routes/+page.svelte`, `opencode-docs/AGENTS.md`
+
+## 2026-09-16 (cleanup) — Dead/zombie code removed
+
+- Audited the whole `hub-app/src` tree (cross-referencing every component, export, function and asset) and removed:
+  - `lib/components/Accordion.svelte` — unused (only `LegendAccordion` is used).
+  - `extractMapPanelData()` export — unused (`ArcGISMap` uses `extractLayers`/`extractLegendLazy`).
+  - `LegendAccordion`'s non-embedded mode (header/toggle/`title` prop/`open` state) — its only caller `MapLayerPanel` always rendered it embedded; `MapLayerPanel` no longer passes `embedded`.
+  - `SectorSidebar`: dead `--sector-color` custom property, empty `.group {}` rule, and the `groupColor()` indirection whose parameter was ignored.
+  - `fetchLayerMetadata`: unused `source` field (was `none`/`missing-layer`/`sublayer-rest`/`source-json`/`portal-item`/`layer-props`); early guard also now returns `summary`.
+  - 39 unreferenced `src/lib/assets/icons/**` files and the entire duplicated `static/icons/` directory (41 files) + empty `static/fonts/`. Kept `icon/map-pin.png`, `go-to.svg`, `sector/*`, `thrive-logo.svg`, `favicon.svg`.
+- Verified no lingering references and a clean `vite build`.
+- **Left pending (not dead, but dormant)**: empty `mapId` for responsible-growth / community-prosperity in `lib/store.js`, and the unlinked `regional-activity` map entry.
+- **Files changed**: `hub-app/src/lib/components/{Accordion.svelte (deleted),LegendAccordion.svelte,MapLayerPanel.svelte,SectorSidebar.svelte}`, `hub-app/src/lib/map/{extractMapPanelData.js,fetchSublayerMetadata.js}`, deleted icon sets, `opencode-docs/AGENTS.md`

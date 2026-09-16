@@ -5,6 +5,7 @@
 	import SectorSidebar from '$lib/components/SectorSidebar.svelte';
 	import MapPageLayout from '$lib/components/MapPageLayout.svelte';
 	import { maps, sectorDefaults } from '$lib/store';
+	import { secondaryBoundaryExtent } from '$lib/map/secondaryBoundary';
 
 	const map = $derived(maps[page.params.id]);
 	const sector = $derived(sectorDefaults[page.params.id] ?? null);
@@ -13,12 +14,16 @@
 {#if map}
 	<MapPageLayout>
 		{#if sector}
-			<SectorSidebar sectorName={sector.name} sectorColor={sector.color} description={sector.description} />
+			<SectorSidebar
+				sectorName={sector.name}
+				sectorColor={sector.color}
+				description={sector.description}
+			/>
 		{:else}
 			<MapLayerPanel />
 		{/if}
 		<div class="map-container">
-			<ArcGISMap mapId={map.mapId} />
+			<ArcGISMap mapId={map.mapId} defaultExtent={secondaryBoundaryExtent} />
 		</div>
 	</MapPageLayout>
 {:else}

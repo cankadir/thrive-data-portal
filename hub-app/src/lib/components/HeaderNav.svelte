@@ -1,22 +1,25 @@
 <script>
 	import { page } from '$app/state';
-	import thriveLogo from '$lib/assets/thrive-logo.png';
-	import thriveLogoColor from '$lib/assets/thrive-logo-color.svg';
+	import thriveLogo from '$lib/assets/thrive-logo.svg';
 	import { maps } from '$lib/store';
+	import { sectorById } from '$lib/sectors';
 
 	const isLanding = $derived(page.route.id === '/');
 	const sectorId = $derived(page.route.id === '/maps/[id]' ? page.params.id : null);
 
-	const sectors = [
-		{ id: 'responsible-growth', color: '#f68a46' },
-		{ id: 'transportation-infrastructure', color: '#33a5b9' },
-		{ id: 'community-prosperity', color: '#81749a' },
-		{ id: 'natural-treasures', color: '#93a221' }
-	].map((sector) => ({ ...sector, title: maps[sector.id].title }));
+	const sectorOrder = [
+		'responsible-growth',
+		'transportation-infrastructure',
+		'community-prosperity',
+		'natural-treasures'
+	];
+
+	const sectors = sectorOrder.map((id) => ({ ...sectorById[id], title: maps[id].title }));
 
 	const defaultSectorId = sectors[0].id;
 	const activeSector = $derived(sectors.find((sector) => sector.id === sectorId) ?? null);
 	const sectorColor = $derived(activeSector?.color ?? 'transparent');
+	const toggleLabel = $derived(isLanding ? 'Sector Maps' : (activeSector ?? sectors[0]).title);
 </script>
 
 <nav class="nav">
@@ -27,13 +30,17 @@
 			rel="noopener noreferrer"
 			class="logo-link"
 		>
-			<img src={isLanding ? thriveLogoColor : thriveLogo} alt="Thrive" class="logo" />
+			<img src={thriveLogo} alt="Thrive" class="logo" />
 		</a>
 	</div>
 
 	<div class="nav-menu">
 		<div class="nav-items">
-			<a class="nav-item" href="/regional-activity">Regional Activity Map</a>
+			<a
+				class="nav-item"
+				class:active={page.route.id === '/regional-activity'}
+				href="/regional-activity">Regional Activity Map</a
+			>
 
 			<div class="nav-item nav-sector">
 				<a
@@ -41,7 +48,7 @@
 					href="/maps/{sectorId ?? defaultSectorId}"
 					style="background-color: {sectorColor}"
 				>
-					Sector Maps
+					{toggleLabel}
 				</a>
 				<div class="sector-dropdown">
 					{#each sectors as sector (sector.id)}
@@ -56,7 +63,9 @@
 				</div>
 			</div>
 
-			<a class="nav-item" href="/resources">Resource Library</a>
+			<a class="nav-item" class:active={page.route.id === '/resources'} href="/resources"
+				>Resource Library</a
+			>
 
 			<a class="nav-item" href="/data-access" onclick={(e) => e.preventDefault()}>Data Access</a>
 		</div>
@@ -141,6 +150,10 @@
 		background: #dedcd4;
 	}
 
+	.nav-item.active {
+		background: #33a5b9;
+	}
+
 	.nav-sector {
 		position: relative;
 		flex-direction: column;
@@ -153,12 +166,15 @@
 		align-items: center;
 		justify-content: center;
 		flex: 1;
+		padding: 1px 8px;
 		text-decoration: none;
 		font-weight: 600;
 		font-size: 18px;
 		line-height: 23px;
 		color: #000;
 		text-align: center;
+		white-space: normal;
+		overflow-wrap: break-word;
 		transition: filter 0.15s;
 	}
 

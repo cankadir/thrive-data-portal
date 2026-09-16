@@ -6,12 +6,19 @@ import identityManager from '@arcgis/core/identity/IdentityManager.js';
 
 identityManager.dialog = null;
 
-/** @param {import('@arcgis/core/views/MapView').default} view */
-export async function extractMapPanelData(view) {
-	if (!view?.map) return { layers: [], legend: [] };
-	await view.when();
-	const layers = await extractLayers(view);
-	return { layers, legend: [] };
+/**
+ * Reference-only layer groups kept off the side panel. They stay visible on the
+ * map but are not user-editable, so their subtree is skipped during extraction.
+ */
+const HIDDEN_GROUP_TITLES = new Set(['thrive boundaries and mask layers', 'thrive region masks']);
+
+/** @param {unknown} title */
+function isHiddenGroup(title) {
+	return HIDDEN_GROUP_TITLES.has(
+		String(title ?? '')
+			.trim()
+			.toLowerCase()
+	);
 }
 
 /** Fast layer-only extraction, no legend */
@@ -220,12 +227,15 @@ function flattenOperationalItems(items, depth = 0, ancestorVisible = true) {
 
 	for (const item of toArray(items)) {
 		const layer = item.layer;
+		const title = item.title || layer?.title || layer?.id;
 		const effectiveVisible = Boolean(item.visible && ancestorVisible);
+
+		if (isHiddenGroup(title)) continue;
 
 		if (layer?.id && layer.loadStatus !== 'failed') {
 			layers.push({
 				id: layer.id,
-				title: item.title || layer.title || layer.id,
+				title: title || layer.id,
 				visible: effectiveVisible,
 				url: layer.url ?? null,
 				depth
@@ -249,11 +259,14 @@ function walkMapLayers(layers, depth = 0, ancestorVisible = true) {
 			if (!layer?.id) continue;
 			if (layer.loadStatus === 'failed') continue;
 
+			const title = layer.title || layer.id;
+			if (isHiddenGroup(title)) continue;
+
 			const effectiveVisible = Boolean(layer.visible && ancestorVisible);
 
 			result.push({
 				id: layer.id,
-				title: layer.title || layer.id,
+				title,
 				visible: effectiveVisible,
 				url: layer.url ?? null,
 				depth
