@@ -56,6 +56,8 @@ All hub-app Svelte files reviewed with autofixer. Clean:
 - `hub-app/src/lib/components/MapLayerPanel.svelte` — layer toggle + legend
 - `hub-app/src/lib/components/SectorSidebar.svelte` — sector-specific sidebar
 - `hub-app/src/lib/map/extractMapPanelData.js` — layer/legend extraction; auth suppression; reactive watcher
+- `hub-app/src/routes/forms/[slug]/+page.svelte` — internal Survey123 edit-link list (registry-driven)
+- `hub-app/src/lib/forms.js` — reusable form/survey registry
 
 ## Architecture Decisions (2026-08-31)
 
