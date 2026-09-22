@@ -1,13 +1,14 @@
 <script>
 	import { mapLayers, mapLegend, mapLoading, setMapLayerVisibility } from '$lib/mapStore';
 	import LegendAccordion from '$lib/components/LegendAccordion.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
 </script>
 
 <section class="panel">
 	<h2>Layers</h2>
 
 	{#if $mapLoading}
-		<p class="empty">Loading map layers…</p>
+		<div class="empty"><Spinner label="Loading map layers" /></div>
 	{:else if $mapLayers.length === 0}
 		<p class="empty">No layers found for this map.</p>
 	{:else}

@@ -7,6 +7,7 @@
 		watchMapLayerChanges
 	} from '$lib/map/extractMapPanelData';
 	import { clearSublayerMetadataCache } from '$lib/map/fetchSublayerMetadata';
+	import Spinner from '$lib/components/Spinner.svelte';
 	import WebMap from '@arcgis/core/WebMap.js';
 	import MapView from '@arcgis/core/views/MapView.js';
 	import '@arcgis/core/assets/esri/themes/light/main.css';
@@ -84,7 +85,6 @@
 				mapLayers.set(layers);
 				mapLegend.set(legend);
 
-				mapLoading.set(false);
 				layerWatchHandle = watchMapLayerChanges(view, () => updatePanel(view));
 			} catch (error) {
 				console.error('Failed to load map:', error);
@@ -103,9 +103,20 @@
 	}
 </script>
 
-<div class="map" {@attach attachMap}></div>
+<div class="map-wrap">
+	<div class="map" {@attach attachMap}></div>
+	{#if $mapLoading}
+		<Spinner overlay label="Loading map" />
+	{/if}
+</div>
 
 <style>
+	.map-wrap {
+		position: relative;
+		width: 100%;
+		height: 100%;
+	}
+
 	.map {
 		width: 100%;
 		height: 100%;

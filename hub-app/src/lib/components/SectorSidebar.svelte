@@ -4,6 +4,7 @@
 	import { mapLayers, mapLegend, mapLoading, setMapLayerVisibility } from '$lib/mapStore';
 	import { fetchLayerMetadata, fetchLayerVisualFieldAlias } from '$lib/map/fetchSublayerMetadata';
 	import LayerChart from '$lib/components/LayerChart.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
 	import mapPin from '$lib/assets/icons/icon/map-pin.png';
 
 	let {
@@ -15,24 +16,33 @@
 	let layerMetadata = $state({});
 	let layerAlias = $state({});
 	let loadingMeta = $state({});
+	// Plain Set (not $state) so reading it inside the mapLayers effect doesn't
+	// create a reactive dependency — otherwise setting loadingMeta triggers the
+	// effect again and it loops forever.
+	const inFlight = new Set();
 	let layers = $state([]);
 	let legend = $state([]);
 	let isLoading = $state(true);
 	let openGroups = new SvelteSet();
 
 	async function loadLayerInfo(layer) {
-		if (!layer.visible || loadingMeta[layer.id]) return;
+		if (!layer.visible || inFlight.has(layer.id)) return;
 
+		inFlight.add(layer.id);
 		loadingMeta[layer.id] = true;
 
-		const [meta, alias] = await Promise.all([
-			fetchLayerMetadata(layer.id, { layerUrl: layer.url }),
-			fetchLayerVisualFieldAlias(layer.id, { layerUrl: layer.url })
-		]);
+		try {
+			const [meta, alias] = await Promise.all([
+				fetchLayerMetadata(layer.id, { layerUrl: layer.url }),
+				fetchLayerVisualFieldAlias(layer.id, { layerUrl: layer.url })
+			]);
 
-		layerMetadata[layer.id] = meta;
-		if (alias) layerAlias[layer.id] = alias;
-		loadingMeta[layer.id] = false;
+			layerMetadata[layer.id] = meta;
+			if (alias) layerAlias[layer.id] = alias;
+		} finally {
+			loadingMeta[layer.id] = false;
+			inFlight.delete(layer.id);
+		}
 	}
 
 	$effect(() => {
@@ -99,7 +109,7 @@
 		}
 	}
 
-	async function toggleLayer(layerId, visible, layerUrl) {
+	function toggleLayer(layerId, visible) {
 		setMapLayerVisibility(layerId, visible);
 		layers = layers.map((l) => (l.id === layerId ? { ...l, visible } : l));
 
@@ -125,7 +135,7 @@
 
 	<div class="sidebar-body">
 		{#if isLoading}
-			<p class="empty">Loading map layers…</p>
+			<div class="empty"><Spinner label="Loading map layers" /></div>
 		{:else if groups.length === 0}
 			<p class="empty">No layer groups available for this map.</p>
 		{:else}
@@ -146,7 +156,7 @@
 								<div class="layer-item">
 									<button
 										class="layer-toggle"
-										onclick={() => toggleLayer(layer.id, !layer.visible, layer.url)}
+										onclick={() => toggleLayer(layer.id, !layer.visible)}
 									>
 										<span class="radio" class:active={layer.visible}>
 											{#if layer.visible}
@@ -174,7 +184,7 @@
 													<p class="legend-heading">{layerAlias[layer.id]}</p>
 												{/if}
 												<ul class="legend-list">
-													{#each legendFor(layer.id).items as item (item.label || item.type || i)}
+													{#each legendFor(layer.id).items as item, i (i)}
 														<li class="legend-item">
 															{#if item.previewHtml}
 																<span class="legend-symbol">{@html item.previewHtml}</span>

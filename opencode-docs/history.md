@@ -178,3 +178,27 @@
 - **Panel separation**: `SectorSidebar` and `MapLayerPanel` `border-right` changed `#ddd` → `1px solid #000`; `SectorSidebar` `.group-header` got `border-right: none` so the group bar doesn't double the panel edge. Both panels now share `width: var(--panel-width)`; `--panel-width: 508px` defined on `:root` in `+layout.svelte`.
 - **Nav logo matches the panel**: `HeaderNav` adds `.on-map` on `/maps/[id]` and sizes `.nav-logo` to `calc(var(--panel-width) - 1px)` (the `-1px` compensates the nav's own left border). Verified headlessly at 1600px on `/maps/natural-treasures`: nav-logo right edge = 508 = sidebar right edge, both black dividers aligned.
 - **Files changed**: `hub-app/src/lib/map/fetchSublayerMetadata.js`, `hub-app/src/lib/components/{SectorSidebar,MapLayerPanel,HeaderNav}.svelte`, `hub-app/src/routes/+layout.svelte`, `opencode-docs/AGENTS.md`
+
+## 2026-09-22 (loading spinner)
+
+- **Request**: Esri map load is slow — show a spinner until the map loads; keep the map component simple and make it a reusable component.
+- **Added `Spinner.svelte`** (pure CSS, no deps): props `size`, `color` (default `#008fa8`), `label`, `overlay`. `overlay` = absolute fill of the positioned parent with a translucent `#e0e0d9` wash; hoisted as a component so `ArcGISMap` stays thin. `role="status"` + `aria-label`, `prefers-reduced-motion` swaps spin for a pulse.
+- **Wired**: `ArcGISMap` wraps the map pane in `.map-wrap { position: relative }` and renders `<Spinner overlay>` while the existing `mapLoading` store is true (view stays mounted underneath). `SectorSidebar`/`MapLayerPanel` replaced their "Loading map layers…" text with the inline `<Spinner>`.
+- **Verified**: autofixer + prettier clean, `npm run build` clean; rendered a temporary preview route headlessly to confirm the teal ring/overlay look, then deleted it. Spinner keyed to `mapLoading` (set true on mount, false once layers + legend extraction finish).
+- **Files changed**: `hub-app/src/lib/components/Spinner.svelte` (new), `hub-app/src/lib/components/{ArcGISMap,SectorSidebar,MapLayerPanel}.svelte`, `opencode-docs/AGENTS.md`
+
+## 2026-09-22 (infinite render loop fix)
+
+- **Symptom**: Firefox "this page is slowing down" on the sector maps; CPU pegged.
+- **Root cause**: `SectorSidebar`'s `$effect` subscribes to `mapLayers`; its synchronous callback calls `loadLayerInfo()`, which read *and* wrote the `loadingMeta` `$state` (`if (loadingMeta[id]) return; … loadingMeta[id] = false`). Reading `loadingMeta` inside the effect made it a dependency, so the post-`await` write re-ran the effect — reloading metadata forever. Reproduced in an isolated route: **16,777,217 runs / "Set maximum size exceeded" in ~2s** with the state guard vs **1 run** with a plain `Set` guard (initial flawed repro used `runs++` which self-loops; fixed the test before trusting it).
+- **Fix**: in-flight guard moved to a non-reactive `const inFlight = new Set()`; `loadingMeta` is now only *written* (for the "Loading…" UI), never read by the effect. Writes don't register dependencies, reads do.
+- **Audit**: checked the other `$effect`s — `resources` typewriter (writes `typed`, never reads it → safe) and `LegendAccordion` (its `metadataLoaded` guard stays `true`, so it converges after one extra run → safe).
+- **Files changed**: `hub-app/src/lib/components/SectorSidebar.svelte`, `opencode-docs/AGENTS.md`
+
+## 2026-09-22 (dead/defensive code sweep)
+
+- Ran a read-only codebase audit (explore agent) for zombie/overly-defensive code, verified each finding, and fixed only the safe ones. `npm run build` + prettier clean.
+- **Fixed (safe)**: `SectorSidebar` legend each-key `(item.label || item.type || i)` referenced an unbound `i` (latent `ReferenceError`) → `as item, i (i)`; dropped the unused `layerUrl` param + redundant `async` from `toggleLayer`; removed the dead `title` field from `extractMapPanelData` legend entries (no consumer); removed the redundant `mapLoading.set(false)` in `ArcGISMap` (the `finally` covers it); simplified the no-op system-message reassignment in `search-resources/+server.js`; removed the dead `globalid || objectid` fallback in `resources/+page.svelte` (live check: `globalid` never null, and the API keys on `globalid`); `catch (e)` → `catch {`; removed the empty `<script>` in `regional-activity/+page.svelte`; fixed `MapPageLayout` `calc(100vh - 59px)` → `100vh - 60px` (measured: nav is 60px, the old value caused a 1px vertical scroll).
+- **Left for decision (documented as intentional / needs product sign-off)**: the dormant `MapLayerPanel` + `LegendAccordion` cluster (reachable only via the unlinked `/maps/regional-activity`); the two empty `mapId` stubs (community-prosperity / responsible-growth, linked but blank); the root `+layout.js` load fetching the tools catalog on every route (only `/resources` uses it); the `/data-access` placeholder link; the `/forms` routes (internal, unlinked by design); unused-but-intentional prop defaults (`Spinner` size/color, `ThinkingIndicator` label) and `var(--panel-width, 508px)` fallbacks.
+- **Audit result**: no unused exports/imports/locals, no unused CSS classes, no commented-out code, no unused assets.
+- **Files changed**: `hub-app/src/lib/components/{SectorSidebar,ArcGISMap,MapPageLayout}.svelte`, `hub-app/src/lib/map/extractMapPanelData.js`, `hub-app/src/routes/api/search-resources/+server.js`, `hub-app/src/routes/regional-activity/+page.svelte`, `hub-app/src/routes/resources/+page.svelte`

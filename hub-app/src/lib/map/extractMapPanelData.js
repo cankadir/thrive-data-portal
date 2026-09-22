@@ -101,7 +101,7 @@ async function extractLegend(legendVM, view) {
 
 			if (items.length === 0) continue;
 
-			legend.push({ layerId, title: info.title, items });
+			legend.push({ layerId, items });
 		} catch (e) {
 			console.warn('Legend entry skipped:', e);
 		}
@@ -116,7 +116,7 @@ async function extractLegend(legendVM, view) {
 			if (!arcLayer) continue;
 			const items = await legendFromRenderer(arcLayer);
 			if (items.length > 0) {
-				legend.push({ layerId: layer.id, title: layer.title, items });
+				legend.push({ layerId: layer.id, items });
 			}
 		} catch (e) {
 			console.warn('Missing legend entry skipped:', e);

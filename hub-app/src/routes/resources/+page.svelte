@@ -34,7 +34,7 @@
 	const toolsById = $derived.by(() => {
 		const map = {};
 		for (const tool of approvedTools) {
-			map[tool.attributes.globalid || tool.attributes.objectid] = tool;
+			map[tool.attributes.globalid] = tool;
 		}
 		return map;
 	});
@@ -116,7 +116,7 @@
 				rankedIds = data.ids;
 				reasoning = data.reasoning;
 			}
-		} catch (e) {
+		} catch {
 			error = 'Could not reach the search service.';
 		} finally {
 			loading = false;
@@ -187,7 +187,7 @@
 	<section class="cards">
 		{#if visibleTools.length > 0}
 			<div class="grid">
-				{#each visibleTools as tool (tool.attributes.globalid || tool.attributes.objectid)}
+				{#each visibleTools as tool (tool.attributes.globalid)}
 					<ResourceCard {tool} />
 				{/each}
 			</div>

@@ -8,7 +8,7 @@
 
 <style>
 	.map-page {
-		height: calc(100vh - 59px);
+		height: calc(100vh - 60px);
 		display: flex;
 	}
 </style>

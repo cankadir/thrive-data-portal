@@ -1,6 +1,3 @@
-<script>
-</script>
-
 <main class="placeholder">
 	<h1>Regional Activity Map</h1>
 	<p>Coming soon.</p>

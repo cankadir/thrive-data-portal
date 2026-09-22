@@ -70,9 +70,7 @@ export async function POST({ request, cookies }) {
 
 	// Prune old turns, but always keep the system message (messages[0])
 	if (messages.length - 1 > MAX_HISTORY) {
-		const system = messages[0];
 		messages.splice(1, messages.length - 1 - MAX_HISTORY);
-		messages[0] = system;
 	}
 
 	const response = await fetch(DEEPSEEK_URL, {
