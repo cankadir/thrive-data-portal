@@ -3,6 +3,7 @@
 	import { SvelteSet } from 'svelte/reactivity';
 	import { mapLayers, mapLegend, mapLoading, setMapLayerVisibility } from '$lib/mapStore';
 	import { fetchLayerMetadata, fetchLayerVisualFieldAlias } from '$lib/map/fetchSublayerMetadata';
+	import LayerChart from '$lib/components/LayerChart.svelte';
 	import mapPin from '$lib/assets/icons/icon/map-pin.png';
 
 	let {
@@ -169,7 +170,9 @@
 											{/if}
 
 											{#if (legendFor(layer.id)?.items ?? []).length > 0}
-												<p class="legend-heading">{layerAlias[layer.id] ?? 'Legend'}</p>
+												{#if layerAlias[layer.id]}
+													<p class="legend-heading">{layerAlias[layer.id]}</p>
+												{/if}
 												<ul class="legend-list">
 													{#each legendFor(layer.id).items as item (item.label || item.type || i)}
 														<li class="legend-item">
@@ -185,6 +188,14 @@
 											{#if layerMetadata[layer.id]?.copyright}
 												<p class="layer-copyright">{layerMetadata[layer.id].copyright}</p>
 											{/if}
+										</div>
+									{/if}
+
+									{#if layer.visible && layer.chartCount > 0}
+										<div class="layer-charts">
+											{#each Array.from({ length: layer.chartCount }, (_, i) => i) as index (index)}
+												<LayerChart layerId={layer.id} chartIndex={index} />
+											{/each}
 										</div>
 									{/if}
 								</div>
@@ -204,8 +215,8 @@
 		flex-direction: column;
 		overflow: hidden;
 		background: #faf9f9;
-		border-right: 1px solid #ddd;
-		width: 508px;
+		border-right: 1px solid #000;
+		width: var(--panel-width, 508px);
 		flex-shrink: 0;
 	}
 
@@ -261,6 +272,7 @@
 		padding: 6px 16px;
 		border: 1px solid #000;
 		border-bottom: none;
+		border-right: none;
 		font: inherit;
 		cursor: pointer;
 	}
@@ -342,6 +354,10 @@
 
 	.layer-detail {
 		padding: 0 0 0.5rem 2rem;
+	}
+
+	.layer-charts {
+		padding: 0.25rem 0 0.75rem;
 	}
 
 	.meta-loading {

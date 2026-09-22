@@ -21,6 +21,13 @@ function isHiddenGroup(title) {
 	);
 }
 
+/** Number of webmap charts configured on a layer. @param {unknown} layer */
+function chartCountOf(layer) {
+	return Array.isArray(/** @type {any} */ (layer)?.charts)
+		? /** @type {any} */ (layer).charts.length
+		: 0;
+}
+
 /** Fast layer-only extraction, no legend */
 export async function extractLayers(view) {
 	if (!view?.map) return [];
@@ -238,7 +245,8 @@ function flattenOperationalItems(items, depth = 0, ancestorVisible = true) {
 				title: title || layer.id,
 				visible: effectiveVisible,
 				url: layer.url ?? null,
-				depth
+				depth,
+				chartCount: chartCountOf(layer)
 			});
 		}
 
@@ -269,7 +277,8 @@ function walkMapLayers(layers, depth = 0, ancestorVisible = true) {
 				title,
 				visible: effectiveVisible,
 				url: layer.url ?? null,
-				depth
+				depth,
+				chartCount: chartCountOf(layer)
 			});
 
 			if (layer.type === 'group' && layer.layers?.length) {

@@ -20,6 +20,11 @@
 		box-sizing: border-box;
 	}
 
+	:global(:root) {
+		/* Side panel width — shared by the map sidebars and the nav logo column. */
+		--panel-width: 508px;
+	}
+
 	:global(html),
 	:global(body) {
 		margin: 0;

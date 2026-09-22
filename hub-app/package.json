@@ -12,7 +12,9 @@
 		"format": "prettier --write ."
 	},
 	"dependencies": {
-		"@arcgis/core": "^4.34.0"
+		"@arcgis/charts-components": "^5.1.24",
+		"@arcgis/core": "^5.1.24",
+		"@esri/calcite-components": "^5.1.2"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.1",

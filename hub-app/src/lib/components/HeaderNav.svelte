@@ -6,6 +6,7 @@
 
 	const isLanding = $derived(page.route.id === '/');
 	const sectorId = $derived(page.route.id === '/maps/[id]' ? page.params.id : null);
+	const isMapPage = $derived(page.route.id === '/maps/[id]');
 
 	const sectorOrder = [
 		'responsible-growth',
@@ -23,7 +24,7 @@
 </script>
 
 <nav class="nav">
-	<div class="nav-logo">
+	<div class="nav-logo" class:on-map={isMapPage}>
 		<a
 			href="https://www.thriveregionalpartnership.org/"
 			target="_blank"
@@ -101,6 +102,13 @@
 		align-items: center;
 		padding: 0 16px;
 		border-right: 1px solid #000;
+	}
+
+	/* On map pages the logo column matches the side panel so the divider lines up.
+	   -1px accounts for the nav's own left border, which the panel doesn't have. */
+	.nav-logo.on-map {
+		flex: 0 0 calc(var(--panel-width, 508px) - 1px);
+		width: calc(var(--panel-width, 508px) - 1px);
 	}
 
 	.logo-link {

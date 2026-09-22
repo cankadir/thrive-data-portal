@@ -51,12 +51,14 @@
 	.panel {
 		box-sizing: border-box;
 		height: 100%;
+		width: var(--panel-width, 508px);
+		flex-shrink: 0;
 		min-width: 0;
 		overflow-x: hidden;
 		overflow-y: auto;
 		padding: 1rem;
 		background: #f7f7f7;
-		border-right: 1px solid #ddd;
+		border-right: 1px solid #000;
 	}
 
 	h2 {

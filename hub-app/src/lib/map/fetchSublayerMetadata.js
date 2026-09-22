@@ -41,7 +41,7 @@ export async function fetchLayerVisualFieldAlias(layerId, options = {}) {
 		}
 
 		const renderer = layer.renderer;
-		const fieldName = renderer?.field1 ?? renderer?.field ?? renderer?.field2;
+		const fieldName = resolveRendererField(renderer);
 		if (!fieldName) return null;
 
 		const field = (layer.fields ?? []).find(
@@ -52,6 +52,29 @@ export async function fetchLayerVisualFieldAlias(layerId, options = {}) {
 
 	visualFieldCache.set(cacheKey, request);
 	return request;
+}
+
+/**
+ * Field a renderer is symbolized by. Renderers expose it differently:
+ * `field1`/`field2`/`field3` (unique-value), `field` (class-breaks, heatmap,
+ * proportional), size/color `visualVariables[].field`, and `normalizationField`.
+ * @param {any} renderer
+ * @returns {string | null}
+ */
+function resolveRendererField(renderer) {
+	if (!renderer) return null;
+
+	const candidates = [
+		renderer.field1,
+		renderer.field,
+		renderer.field2,
+		renderer.field3,
+		...(renderer.visualVariables ?? []).map((/** @type {any} */ variable) => variable.field),
+		renderer.normalizationField
+	];
+
+	const field = candidates.find((name) => typeof name === 'string' && name.trim());
+	return field ?? null;
 }
 
 /**
