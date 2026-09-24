@@ -17,6 +17,10 @@
  *   statusStyles    Map of raw value → { label, tone } (tone: green/red/blue/grey).
  *   emptyStatus     Tag used when a status cell is null/empty.
  *   surveyUrl       Survey123 share URL (no query string).
+ *   attachments     Optional. Enables the /forms/<slug>/photos/<globalId> page and the
+ *                   "Photos" button on each row. Shape: { slots: [{ keyword, label, kind }] }
+ *                   where keyword is the Survey123 attachment keyword (e.g. photo_1) and
+ *                   kind is 'image' (resized client-side) or 'video' (uploaded as-is).
  */
 export const forms = {
 	'regional-activity-map': {
@@ -37,7 +41,15 @@ export const forms = {
 			in_review: { label: 'In review', tone: 'blue' }
 		},
 		emptyStatus: { label: 'Needs review', tone: 'grey' },
-		surveyUrl: 'https://survey123.arcgis.com/share/e7199db2f8354ce7a2eecc55cafa6d5a'
+		surveyUrl: 'https://survey123.arcgis.com/share/e7199db2f8354ce7a2eecc55cafa6d5a',
+		attachments: {
+			slots: [
+				{ keyword: 'photo_1', label: 'Photo 1', kind: 'image' },
+				{ keyword: 'photo_2', label: 'Photo 2', kind: 'image' },
+				{ keyword: 'photo_3', label: 'Photo 3', kind: 'image' },
+				{ keyword: 'video', label: 'Video', kind: 'video' }
+			]
+		}
 	},
 	'hub-data-submission': {
 		title: 'Hub Data Submission — Tool Editor',

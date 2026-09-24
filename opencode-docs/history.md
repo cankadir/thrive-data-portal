@@ -210,3 +210,34 @@
 - **Implementation**: pure registry addition — one entry `hub-data-submission` in `hub-app/src/lib/forms.js`. No route/component changes. `globalIdField: 'globalid'`, `objectIdField: 'objectid'`, `labelField: 'title'`, `columns: ['author', 'is_the_tool_approved']`, `statusField: 'is_the_tool_approved'` with `Y`→green "Yes" / `N`→red "No" / null→grey "Needs review".
 - **Verified** against the running dev server on `:5173`: `/forms/hub-data-submission` → 200, 17 edit links (`?mode=edit&globalId=…`, correct globalIds), 15 green / 1 red / 1 grey tags; `/forms/regional-activity-map` unchanged (41 records); `/forms` index lists both. Prettier clean; no Svelte files changed.
 - **Files changed**: `hub-app/src/lib/forms.js`, `opencode-docs/AGENTS.md`
+
+## 2026-09-24 (later) — RAM photo updater page
+
+- **Problem**: Survey123 browser edit writes text but never attachments (field-app-only feature). Custom page required.
+- **Registry**: added `attachments.slots` to `regional-activity-map` in `hub-app/src/lib/forms.js` — `photo_1/2/3` (image) + `video` (video). Forms without `attachments` are untouched (`hub-data-submission`).
+- **Row**: `forms/[slug]/+page.server.js` adds `row.photosUrl` + `hasAttachments`; `+page.svelte` wraps each record in a `.row-group` grid so the new "Photos" link sits beside the row anchor (avoids nesting `<a>` inside the row `<a>`). Header gets a matching "Photos" column.
+- **Page**: `/forms/[slug]/photos/[globalId]` — server resolves `GlobalID_2`→`ObjectId` (strict GUID regex before the WHERE, 404 on bad/unknown/no-attachments), fetches existing attachments, returns `attachUrl`. Client: 3 image slots + video slot, `createImageBitmap` resize to 1280px JPEG, `XMLHttpRequest` upload progress, replace = delete+add, remove = `deleteAttachments`, direct to ArcGIS (no token/proxy — internal, layer is anonymously writable, GUID is the key). Mutations refresh via `invalidateAll()`; no `$effect` (autofixer flags state writes in effects).
+- **Verified** on `:5173`: 42 RAM Photos buttons, 0 on hub-data, oid 41 renders its `photo_1` attachment — `ram-test-photo.png` in Photo 1, other 3 slots empty, bad GUID 404, hub-data photo route 404. Prettier + `npm run build` clean. Live write deliberately not run (would mutate the real layer).
+- **Open**: `video` keyword unconfirmed against the survey's video question; 25 MB client cap; hand-link test on oid 41 pending.
+- **Files changed**: `hub-app/src/lib/forms.js`, `hub-app/src/routes/forms/[slug]/+page.server.js`, `hub-app/src/routes/forms/[slug]/+page.svelte`, `hub-app/src/routes/forms/[slug]/photos/[globalId]/+page.server.js` (new), `hub-app/src/routes/forms/[slug]/photos/[globalId]/+page.svelte` (new), `opencode-docs/AGENTS.md`
+
+## 2026-09-24 (photo updater — staged submit)
+
+- **Follow-up**: the first cut uploaded/removed immediately on picking a file — no submit. Reworked to a staged flow: picking a file or toggling Remove only updates local `pending`/`removed` state (image previews via `URL.createObjectURL`); one **Save changes** button applies all ops (replace = delete slot's existing attachments + add; removals = `deleteAttachments`), then `invalidateAll()`. Save is disabled until there are changes; shows an op-count progress bar + per-slot validation messages.
+- **Card tightened**: page 760px, slot padding `0.75rem 0.9rem`, 44px thumbs, smaller type, `Empty`/buttons scaled down.
+- **Verified**: autofixer clean, prettier clean, `npm run build` clean; SSR on `:5173` shows the disabled "Save changes" button, Photo 1 with its existing `ram-test-photo.png`, other slots empty.
+- **Files changed**: `hub-app/src/routes/forms/[slug]/photos/[globalId]/+page.svelte`, `opencode-docs/AGENTS.md`
+
+## 2026-09-24 (photo updater — confirmation screen)
+
+- **Follow-up**: replace the inline "Saved." with a completion screen after a successful submit — "The photos are submitted to row `<globalId>` (label). You can go back to all records." plus a **Back to all records** link and an "Add or remove more photos" button (resets `done`). The slots/actions are wrapped in `{#if done}…{:else}`.
+- **Bug caught while doing it**: the submit loop counter was `let done = 0`, shadowing the new `done` state — `done = true` assigned the local, so the confirmation would never render. Renamed to `step`.
+- **Verified**: autofixer clean, prettier clean, `npm run build` clean; SSR shows the form + disabled "Save changes" (no "Photos submitted" yet).
+- **Files changed**: `hub-app/src/routes/forms/[slug]/photos/[globalId]/+page.svelte`, `opencode-docs/AGENTS.md`
+
+## 2026-09-24 (photo updater — video is a file question)
+
+- **Clarified**: Survey123 has no video question type — the video lives in a generic **file** question. So the keyword is whatever that file question is named (still unconfirmed; code uses `'video'`).
+- **Caps/validation**: video slot now capped at **10 MB** (was 25 MB) and restricted to known video formats — `VIDEO_TYPES` (mp4/quicktime/x-m4v/webm/x-msvideo/x-matroska/mpeg) or `VIDEO_EXT` (mp4, mov, m4v, webm, avi, mkv, mpeg, mpg) whitelist via `isVideo(file)`; file input `accept` lists those exts. Hint reads "MP4, MOV, M4V, WEBM · up to 10 MB".
+- **Verified**: autofixer clean, prettier clean, `npm run build` clean; SSR shows the new video hint.
+- **Files changed**: `hub-app/src/routes/forms/[slug]/photos/[globalId]/+page.svelte`, `opencode-docs/AGENTS.md`

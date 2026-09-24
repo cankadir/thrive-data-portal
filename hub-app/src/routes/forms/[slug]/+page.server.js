@@ -53,7 +53,8 @@ export async function load({ params, fetch }) {
 				globalId,
 				label: attrs[form.labelField] || 'Untitled record',
 				values: (form.columns ?? []).map((column) => attrs[column] ?? ''),
-				editUrl: surveyEditUrl(form, globalId)
+				editUrl: surveyEditUrl(form, globalId),
+				photosUrl: form.attachments ? `/forms/${params.slug}/photos/${globalId}` : null
 			});
 		}
 
@@ -68,6 +69,7 @@ export async function load({ params, fetch }) {
 		statusField: form.statusField ?? null,
 		statusStyles: form.statusStyles ?? {},
 		emptyStatus: form.emptyStatus ?? null,
+		hasAttachments: Boolean(form.attachments),
 		rows
 	};
 }

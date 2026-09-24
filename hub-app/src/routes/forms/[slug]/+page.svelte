@@ -37,42 +37,50 @@
 		<p>No records found.</p>
 	{:else}
 		<div class="table">
-			<div class="row head" style="grid-template-columns: {template}">
-				<span>Record</span>
-				{#each columns as column (column.name)}
-					<span>{column.label}</span>
-				{/each}
-				<span></span>
+			<div class="row-group" class:with-action={data.hasAttachments}>
+				<div class="row head" style="grid-template-columns: {template}">
+					<span>Record</span>
+					{#each columns as column (column.name)}
+						<span>{column.label}</span>
+					{/each}
+					<span></span>
+				</div>
+				{#if data.hasAttachments}<span class="head-action">Photos</span>{/if}
 			</div>
 
 			{#each data.rows as row (row.globalId)}
-				<a
-					class="row record"
-					href={row.editUrl}
-					target="_blank"
-					rel="noopener noreferrer"
-					style="grid-template-columns: {template}"
-				>
-					<span class="label">
-						{row.label}
-						<code>{row.globalId}</code>
-					</span>
-					{#each row.values as value, index (columns[index].name)}
-						{#if columns[index].name === data.statusField}
-							{@const status = statusFor(value)}
-							<span class="value">
-								{#if status}
-									<span class="tag {status.tone}">{status.label}</span>
-								{:else}
-									{value}
-								{/if}
-							</span>
-						{:else}
-							<span class="value">{value}</span>
-						{/if}
-					{/each}
-					<span class="arrow" aria-hidden="true">&rarr;</span>
-				</a>
+				<div class="row-group" class:with-action={data.hasAttachments}>
+					<a
+						class="row record"
+						href={row.editUrl}
+						target="_blank"
+						rel="noopener noreferrer"
+						style="grid-template-columns: {template}"
+					>
+						<span class="label">
+							{row.label}
+							<code>{row.globalId}</code>
+						</span>
+						{#each row.values as value, index (columns[index].name)}
+							{#if columns[index].name === data.statusField}
+								{@const status = statusFor(value)}
+								<span class="value">
+									{#if status}
+										<span class="tag {status.tone}">{status.label}</span>
+									{:else}
+										{value}
+									{/if}
+								</span>
+							{:else}
+								<span class="value">{value}</span>
+							{/if}
+						{/each}
+						<span class="arrow" aria-hidden="true">&rarr;</span>
+					</a>
+					{#if row.photosUrl}
+						<a class="photos-link" href={row.photosUrl}>Photos</a>
+					{/if}
+				</div>
 			{/each}
 		</div>
 	{/if}
@@ -109,12 +117,46 @@
 		border-top: 1px solid #d6d6ce;
 	}
 
+	.row-group {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		border-bottom: 1px solid #d6d6ce;
+	}
+
+	.row-group.with-action {
+		grid-template-columns: minmax(0, 1fr) auto;
+	}
+
 	.row {
 		display: grid;
 		gap: 1rem;
 		align-items: start;
 		padding: 0.75rem 1rem;
-		border-bottom: 1px solid #d6d6ce;
+	}
+
+	.head-action {
+		align-self: center;
+		padding-right: 1rem;
+		font-weight: 600;
+		color: #656364;
+	}
+
+	.photos-link {
+		align-self: center;
+		margin-right: 1rem;
+		padding: 0.4rem 0.9rem;
+		border: 1px solid #3064b2;
+		border-radius: 6px;
+		color: #3064b2;
+		font-weight: 600;
+		white-space: nowrap;
+		text-decoration: none;
+	}
+
+	.photos-link:hover,
+	.photos-link:focus-visible {
+		background: #3064b2;
+		color: #fff;
 	}
 
 	.head {
