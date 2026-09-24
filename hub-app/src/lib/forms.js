@@ -38,6 +38,24 @@ export const forms = {
 		},
 		emptyStatus: { label: 'Needs review', tone: 'grey' },
 		surveyUrl: 'https://survey123.arcgis.com/share/e7199db2f8354ce7a2eecc55cafa6d5a'
+	},
+	'hub-data-submission': {
+		title: 'Hub Data Submission — Tool Editor',
+		description: 'Every tool submitted to the Hub, linked to its editable Survey123 response.',
+		serviceUrl:
+			'https://services3.arcgis.com/xpR2E2r2KmCE5hF3/arcgis/rest/services/survey123_46ca68a2d700413a86df84e23eca68f9_results/FeatureServer',
+		layerId: 0,
+		globalIdField: 'globalid',
+		objectIdField: 'objectid',
+		labelField: 'title',
+		columns: ['author', 'is_the_tool_approved'],
+		statusField: 'is_the_tool_approved',
+		statusStyles: {
+			Y: { label: 'Yes', tone: 'green' },
+			N: { label: 'No', tone: 'red' }
+		},
+		emptyStatus: { label: 'Needs review', tone: 'grey' },
+		surveyUrl: 'https://survey123.arcgis.com/share/46ca68a2d700413a86df84e23eca68f9'
 	}
 };
 
