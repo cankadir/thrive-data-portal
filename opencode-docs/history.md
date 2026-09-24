@@ -241,3 +241,8 @@
 - **Caps/validation**: video slot now capped at **10 MB** (was 25 MB) and restricted to known video formats — `VIDEO_TYPES` (mp4/quicktime/x-m4v/webm/x-msvideo/x-matroska/mpeg) or `VIDEO_EXT` (mp4, mov, m4v, webm, avi, mkv, mpeg, mpg) whitelist via `isVideo(file)`; file input `accept` lists those exts. Hint reads "MP4, MOV, M4V, WEBM · up to 10 MB".
 - **Verified**: autofixer clean, prettier clean, `npm run build` clean; SSR shows the new video hint.
 - **Files changed**: `hub-app/src/routes/forms/[slug]/photos/[globalId]/+page.svelte`, `opencode-docs/AGENTS.md`
+
+## 2026-09-24 (photo updater — video keyword confirmed)
+
+- **Resolved**: the video slot's keyword is `short_video` — the XLSForm **`name`** of the "Short video" file question (Survey123 matches attachments by question `name`, not label). Updated `forms.js` (was the placeholder `'video'`) and the label to "Short video".
+- **Files changed**: `hub-app/src/lib/forms.js`, `opencode-docs/AGENTS.md`

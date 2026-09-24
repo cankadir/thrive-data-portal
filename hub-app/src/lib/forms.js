@@ -47,7 +47,7 @@ export const forms = {
 				{ keyword: 'photo_1', label: 'Photo 1', kind: 'image' },
 				{ keyword: 'photo_2', label: 'Photo 2', kind: 'image' },
 				{ keyword: 'photo_3', label: 'Photo 3', kind: 'image' },
-				{ keyword: 'video', label: 'Video', kind: 'video' }
+				{ keyword: 'short_video', label: 'Short video', kind: 'video' }
 			]
 		}
 	},
