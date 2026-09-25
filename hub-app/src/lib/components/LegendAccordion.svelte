@@ -156,7 +156,7 @@
 	.legend-symbol :global(svg),
 	.legend-symbol :global(img),
 	.legend-symbol :global(div) {
-		max-width: 16px;
-		max-height: 16px;
+		max-width: 1rem;
+		max-height: 1rem;
 	}
 </style>

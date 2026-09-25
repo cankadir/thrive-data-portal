@@ -17,6 +17,9 @@
 			<SectorSidebar
 				sectorName={sector.name}
 				sectorColor={sector.color}
+				sectorButton={sector.button}
+				sectorTint={sector.tint}
+				question={sector.question}
 				description={sector.description}
 			/>
 		{:else}

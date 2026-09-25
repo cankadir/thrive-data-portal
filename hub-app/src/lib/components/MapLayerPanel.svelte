@@ -52,7 +52,7 @@
 	.panel {
 		box-sizing: border-box;
 		height: 100%;
-		width: var(--panel-width, 508px);
+		width: var(--panel-width, 31.75rem);
 		flex-shrink: 0;
 		min-width: 0;
 		overflow-x: hidden;
@@ -101,8 +101,8 @@
 
 	.circle {
 		flex-shrink: 0;
-		width: 14px;
-		height: 14px;
+		width: 0.875rem;
+		height: 0.875rem;
 		border: 1.5px solid #333;
 		border-radius: 50%;
 		position: relative;
@@ -113,8 +113,8 @@
 		position: absolute;
 		top: 50%;
 		left: 50%;
-		width: 6px;
-		height: 6px;
+		width: 0.375rem;
+		height: 0.375rem;
 		border-radius: 50%;
 		background: #000;
 		transform: translate(-50%, -50%);

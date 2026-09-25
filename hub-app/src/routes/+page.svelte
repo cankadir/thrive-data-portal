@@ -3,6 +3,7 @@
 	import { sectors } from '$lib/sectors';
 	import thriveLogo from '$lib/assets/thrive-logo.svg';
 	import goToIcon from '$lib/assets/icons/go-to.svg';
+	import hoverArrowIcon from '$lib/assets/icons/arrow-down-right.svg';
 </script>
 
 <main class="landing">
@@ -23,12 +24,13 @@
 							<a
 								class="sector-row"
 								href="/maps/{sector.id}"
-								style="background-color: {sector.color}"
+								style="--row-bg: {sector.color}; --row-hover: {sector.rowHover}"
 							>
 								<img class="sector-icon" src={sector.icon} alt="" />
 								<span class="sector-label">{maps[sector.id].title}</span>
 								<span class="go-btn" style="background-color: {sector.button}">
-									<img src={goToIcon} alt="" />
+									<img class="go-arrow go-arrow-rest" src={goToIcon} alt="" />
+									<img class="go-arrow go-arrow-hover" src={hoverArrowIcon} alt="" />
 								</span>
 							</a>
 						{/each}
@@ -45,7 +47,10 @@
 							Participate:<br />
 							add your projects to the map: <span class="link">www.link.com</span>
 						</p>
-						<span class="go-btn card-cta"><img src={goToIcon} alt="" /></span>
+						<span class="go-btn card-cta">
+							<img class="go-arrow go-arrow-rest" src={goToIcon} alt="" />
+							<img class="go-arrow go-arrow-hover" src={hoverArrowIcon} alt="" />
+						</span>
 					</a>
 				</div>
 
@@ -58,7 +63,10 @@
 							Find interactive maps and apps, tools, storymaps and more that provide deep dives into
 							the topics data and analysis
 						</p>
-						<span class="go-btn card-cta"><img src={goToIcon} alt="" /></span>
+						<span class="go-btn card-cta">
+							<img class="go-arrow go-arrow-rest" src={goToIcon} alt="" />
+							<img class="go-arrow go-arrow-hover" src={hoverArrowIcon} alt="" />
+						</span>
 					</a>
 				</div>
 			</div>
@@ -118,18 +126,18 @@
 	}
 
 	.wrap {
-		width: min(1144px, calc(100% - 64px));
+		width: min(71.5rem, calc(100% - 4rem));
 		margin: 0 auto;
 	}
 
 	/* Hero */
 	.hero {
-		padding: 200px 0 64px;
+		padding: 12.5rem 0 4rem;
 	}
 
 	.hero h1 {
 		margin: 0;
-		font-size: clamp(48px, 6vw, 76px);
+		font-size: clamp(3rem, 6vw, 4.75rem);
 		font-weight: 900;
 		line-height: 1.05;
 		color: #008fa8;
@@ -137,13 +145,13 @@
 
 	/* 1-2-3 cards */
 	.steps {
-		padding: 32px 0 64px;
+		padding: 2rem 0 4rem;
 	}
 
 	.steps-grid {
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 32px;
+		gap: 2rem;
 		align-items: stretch;
 	}
 
@@ -156,9 +164,9 @@
 	.step-head {
 		display: flex;
 		align-items: flex-start;
-		min-height: 77px;
-		margin: 0 0 8px;
-		font-size: 22px;
+		min-height: 4.8125rem;
+		margin: 0 0 0.5rem;
+		font-size: 1.375rem;
 		font-weight: 900;
 		line-height: 26px;
 		color: #444;
@@ -176,12 +184,12 @@
 		display: flex;
 		align-items: center;
 		margin: 0;
-		padding: 4px 12px;
-		min-height: 56px;
+		padding: 0.25rem 0.75rem;
+		min-height: 3.5rem;
 		background: #ffc425;
 		border: 1px solid #000;
-		border-radius: 16px 16px 0 0;
-		font-size: 20px;
+		border-radius: 1rem 1rem 0 0;
+		font-size: 1.25rem;
 		font-weight: 900;
 		line-height: 22px;
 	}
@@ -189,22 +197,28 @@
 	.sector-row {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: 0.5rem;
 		flex: 1;
-		padding: 4px 12px;
+		padding: 0.25rem 0.75rem;
+		background: var(--row-bg);
 		border: 1px solid #000;
 		border-top: none;
 		text-decoration: none;
 		color: #000;
+		transition: background-color var(--anim-duration) var(--anim-ease);
+	}
+
+	.sector-row:hover {
+		background: var(--row-hover);
 	}
 
 	.sector-row:last-child {
-		border-radius: 0 0 16px 16px;
+		border-radius: 0 0 1rem 1rem;
 	}
 
 	.sector-icon {
-		width: 30px;
-		height: 30px;
+		width: 1.875rem;
+		height: 1.875rem;
 		flex-shrink: 0;
 		object-fit: contain;
 	}
@@ -212,7 +226,7 @@
 	.sector-label {
 		flex: 1;
 		min-width: 0;
-		font-size: 20px;
+		font-size: 1.25rem;
 		font-weight: 900;
 		line-height: 22px;
 	}
@@ -221,27 +235,27 @@
 	.card {
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
+		gap: 1rem;
 		flex: 1;
 		min-width: 0;
-		padding: 14px 16px 16px;
+		padding: 0.875rem 1rem 1rem;
 		background: #ffc425;
 		border: 1px solid #000;
-		border-radius: 16px;
+		border-radius: 1rem;
 		text-decoration: none;
 		color: #000;
 	}
 
 	.card h2 {
-		margin: 8px 0 0;
-		font-size: 22px;
+		margin: 0.5rem 0 0;
+		font-size: 1.375rem;
 		font-weight: 900;
 		line-height: 32px;
 	}
 
 	.card hr {
 		margin: 0;
-		width: 314px;
+		width: 19.625rem;
 		max-width: 100%;
 		border: none;
 		border-top: 1px solid #000;
@@ -249,7 +263,7 @@
 
 	.card p {
 		margin: 0;
-		font-size: 20px;
+		font-size: 1.25rem;
 		font-weight: 400;
 		line-height: 26px;
 	}
@@ -260,20 +274,38 @@
 
 	/* Go-to arrow button */
 	.go-btn {
+		position: relative;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 32px;
-		height: 32px;
+		width: 2rem;
+		height: 2rem;
 		flex-shrink: 0;
 		background: #ffdc7c;
 		border: 1px solid #000;
-		border-radius: 8px;
+		border-radius: 0.5rem;
 	}
 
-	.go-btn img {
-		width: 20px;
-		height: 20px;
+	.go-arrow {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transition:
+			opacity var(--anim-duration) var(--anim-ease),
+			transform var(--anim-duration) var(--anim-ease);
+	}
+
+	.go-arrow-rest {
+		width: 1.25rem;
+		height: 0.72rem;
+		transform: translate(-50%, -50%);
+	}
+
+	.go-arrow-hover {
+		width: 1.25rem;
+		height: 1.25rem;
+		opacity: 0;
+		transform: translate(-50%, -50%) rotate(0deg);
 	}
 
 	.card-cta {
@@ -281,14 +313,27 @@
 		align-self: flex-end;
 	}
 
-	.card:hover .go-btn,
-	.sector-row:hover .go-btn {
-		filter: brightness(0.94);
+	.card:hover .go-arrow-rest,
+	.sector-row:hover .go-arrow-rest {
+		opacity: 0;
+	}
+
+	.card:hover .go-arrow-hover,
+	.sector-row:hover .go-arrow-hover {
+		opacity: 1;
+		transform: translate(-50%, -50%) rotate(-90deg);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.sector-row,
+		.go-arrow {
+			transition: none;
+		}
 	}
 
 	.steps-foot {
-		margin: 24px 0 0;
-		font-size: 22px;
+		margin: 1.5rem 0 0;
+		font-size: 1.375rem;
 		font-weight: 900;
 		line-height: 26px;
 		color: #444;
@@ -299,26 +344,26 @@
 		background: #ffc425;
 		border-top: 1px solid #000;
 		border-bottom: 1px solid #000;
-		padding: 48px 0 96px;
+		padding: 3rem 0 6rem;
 	}
 
 	.about-grid {
 		display: grid;
-		grid-template-columns: 1fr 360px;
-		gap: 32px;
+		grid-template-columns: 1fr 22.5rem;
+		gap: 2rem;
 		align-items: start;
 	}
 
 	.about-text h2 {
-		margin: 0 0 32px;
-		font-size: 36px;
+		margin: 0 0 2rem;
+		font-size: 2.25rem;
 		font-weight: 900;
 		line-height: 48px;
 	}
 
 	.about-lead {
-		margin: 0 0 8px;
-		font-size: 22px;
+		margin: 0 0 0.5rem;
+		font-size: 1.375rem;
 		font-weight: 600;
 		line-height: 28px;
 	}
@@ -326,38 +371,38 @@
 	.about-text ul {
 		margin: 0;
 		padding-left: 1.2em;
-		font-size: 20px;
+		font-size: 1.25rem;
 		line-height: 28px;
 	}
 
 	.about-text hr {
-		margin: 24px 0 16px;
+		margin: 1.5rem 0 1rem;
 		border: none;
 		border-top: 1px solid #000;
 	}
 
 	.about-text p:not(.about-lead) {
 		margin: 0;
-		font-size: 20px;
+		font-size: 1.25rem;
 		line-height: 28px;
 	}
 
 	.about-placeholder {
-		height: 359px;
-		border-radius: 16px;
+		height: 22.4375rem;
+		border-radius: 1rem;
 		background: #ffd051;
 		box-shadow: 8px 8px 4px 0 rgba(0, 0, 0, 0.25);
 	}
 
 	/* Tagline */
 	.tagline {
-		padding: 48px 0 96px;
+		padding: 3rem 0 6rem;
 		text-align: right;
 	}
 
 	.tagline h2 {
-		margin: 0 0 12px;
-		font-size: clamp(36px, 5vw, 58px);
+		margin: 0 0 0.75rem;
+		font-size: clamp(2.25rem, 5vw, 3.625rem);
 		font-weight: 900;
 		line-height: 1.05;
 		color: #625181;
@@ -365,30 +410,30 @@
 
 	.tagline p {
 		margin: 0 0 0 auto;
-		max-width: 858px;
-		font-size: 20px;
+		max-width: 53.625rem;
+		font-size: 1.25rem;
 		line-height: 28px;
 	}
 
 	/* Footer */
 	.footer {
-		padding: 32px;
+		padding: 2rem;
 	}
 
 	.footer hr {
-		margin: 0 0 32px;
+		margin: 0 0 2rem;
 		border: none;
 		border-top: 1px solid #000;
 	}
 
 	.footer img {
-		height: 101px;
+		height: 6.3125rem;
 		width: auto;
 	}
 
 	@media (max-width: 900px) {
 		.hero {
-			padding: 64px 0 40px;
+			padding: 4rem 0 2.5rem;
 		}
 
 		.steps-grid,
@@ -397,7 +442,7 @@
 		}
 
 		.about-placeholder {
-			height: 200px;
+			height: 12.5rem;
 		}
 	}
 </style>

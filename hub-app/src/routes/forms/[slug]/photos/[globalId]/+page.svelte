@@ -303,7 +303,7 @@
 
 <style>
 	.photo-page {
-		max-width: 760px;
+		max-width: 47.5rem;
 		margin: 0 auto;
 		padding: 2rem 1.5rem 4rem;
 	}
@@ -332,7 +332,7 @@
 		margin-top: 1.25rem;
 		padding: 1rem 1.1rem;
 		border: 1px solid #a3c074;
-		border-radius: 8px;
+		border-radius: 0.5rem;
 		background: #eef4e6;
 	}
 
@@ -359,7 +359,7 @@
 
 	.slot {
 		border: 1px solid #d6d6ce;
-		border-radius: 8px;
+		border-radius: 0.5rem;
 		padding: 0.75rem 0.9rem;
 	}
 
@@ -410,9 +410,9 @@
 
 	img,
 	.file-icon {
-		width: 44px;
-		height: 44px;
-		border-radius: 5px;
+		width: 2.75rem;
+		height: 2.75rem;
+		border-radius: 0.3125rem;
 		object-fit: cover;
 		flex: none;
 	}
@@ -459,7 +459,7 @@
 	.ghost {
 		padding: 0.25rem 0.55rem;
 		border: 1px solid #d6d6ce;
-		border-radius: 5px;
+		border-radius: 0.3125rem;
 		background: #fff;
 		color: #656364;
 		font-size: 0.8rem;
@@ -493,7 +493,7 @@
 		display: inline-block;
 		padding: 0.3rem 0.7rem;
 		border: 1px solid #3064b2;
-		border-radius: 5px;
+		border-radius: 0.3125rem;
 		color: #3064b2;
 		font-size: 0.85rem;
 		font-weight: 600;
@@ -523,8 +523,8 @@
 	}
 
 	.progress {
-		width: 120px;
-		height: 6px;
+		width: 7.5rem;
+		height: 0.375rem;
 		border-radius: 999px;
 		background: #f0f0f0;
 		overflow: hidden;
@@ -539,7 +539,7 @@
 	.submit {
 		padding: 0.5rem 1.2rem;
 		border: 1px solid #3064b2;
-		border-radius: 6px;
+		border-radius: 0.375rem;
 		background: #3064b2;
 		color: #fff;
 		font-weight: 600;

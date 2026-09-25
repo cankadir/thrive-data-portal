@@ -27,7 +27,7 @@
 
 <style>
 	.forms-index {
-		max-width: 900px;
+		max-width: 56.25rem;
 		margin: 0 auto;
 		padding: 3rem 1.5rem 5rem;
 	}
@@ -53,7 +53,7 @@
 	li {
 		padding: 1.25rem 1.5rem;
 		border: 1px solid #d6d6ce;
-		border-radius: 10px;
+		border-radius: 0.625rem;
 	}
 
 	a {

@@ -120,6 +120,22 @@
 	.map {
 		width: 100%;
 		height: 100%;
-		min-height: 500px;
+		min-height: 31.25rem;
+	}
+
+	/* The SDK adds the `esri-view` class to the container element itself (our
+	   `.map` div) — `container.classList.add("esri-view")` — so this must be a
+	   global `.esri-view` rule, not a descendant of `.map`. It paints the focus
+	   ring on `.esri-view-surface:focus::after` from `--esri-view-outline`
+	   (default `2px solid var(--calcite-color-brand)` = blue). Kill the variables
+	   and the pseudo-element. */
+	:global(.esri-view) {
+		--esri-view-outline-color: none !important;
+		--esri-view-outline: none !important;
+		--esri-view-outline-offset: 0 !important;
+	}
+
+	:global(.esri-view .esri-view-surface:focus::after) {
+		outline: none !important;
 	}
 </style>

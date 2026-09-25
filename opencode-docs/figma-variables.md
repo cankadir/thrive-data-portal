@@ -152,4 +152,4 @@ Source: `https://www.figma.com/design/L6vJbIO4ZASt6uNKpHZZeb/Thrive`
 - Variable names follow a `category/shade/tone` pattern (e.g., `primary/green/100`, `neutrals/60`).
 - 100 = base/full, 80/60/40/20 = lightened variants.
 - Font family `h` is for headings, `p` for paragraphs, `serif` for decorative/display text.
-- The app currently uses **Source Sans 3** (Google Fonts) instead of the Figma Museo Sans — this was an intentional deviation. See AGENTS.md.
+- The app now uses **Montserrat** (Google Fonts) — the Figma variables resolve to Montserrat, so the app matches the design. (Earlier it used Source Sans 3 as a deliberate deviation; that is superseded.) See AGENTS.md.

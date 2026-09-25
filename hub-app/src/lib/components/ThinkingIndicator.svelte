@@ -11,7 +11,7 @@
 		margin: 0;
 		padding: 0.75rem 1.25rem;
 		background: #ececec;
-		border-radius: 12px;
+		border-radius: 0.75rem;
 		font-size: 1rem;
 		font-weight: 700;
 		color: #656364;

@@ -246,3 +246,62 @@
 
 - **Resolved**: the video slot's keyword is `short_video` — the XLSForm **`name`** of the "Short video" file question (Survey123 matches attachments by question `name`, not label). Updated `forms.js` (was the placeholder `'video'`) and the label to "Short video".
 - **Files changed**: `hub-app/src/lib/forms.js`, `opencode-docs/AGENTS.md`
+
+## 2026-09-25 — Group-layer summaries + layer logging + px→rem
+
+- **Group-layer summary**: AGOL group layers can be saved as "Group Layer" items carrying a portal `snippet`. Natural Treasures' Protected Lands group (`19dca4b8b42-layer-16`) now references item `d5ee129f6f9f477194721b2cda6f8049` (type `Group Layer`, snippet "This group layer is the container for all protected lands layers…"). `SectorSidebar` loads group metadata when the accordion is first opened (`loadLayerInfo(group, true)` — new `force` param skips the visibility guard) and renders `.group-detail` (summary + description) if present. Groups without an `itemId` render nothing. Verified the portal item via the REST API; did **not** capture a headless Playwright run (user aborted that detour — the app is visible to them and needs WebGL).
+- **Layer logging (diagnostic, removed)**: temporarily added logging to `extractMapPanelData.js` and `ArcGISMap.svelte` to dump the raw Esri layer tree (final form: only group layers, nested JSON from both `LayerListViewModel.operationalItems` and `view.map.layers`, with `title/id/type/visible/loadStatus/childCount/snippet/summary/description/portalItem*/keys`). **Removed once done** — the code is back to its original state (only the pre-existing `console.warn` on extraction failure remains).
+- **px→rem conversion**: audited all CSS (~236 px across 14 `.svelte`; none in JS). Converted dimension/spacing properties (width/height/min/max, margin, padding, gap, border-radius, offsets, flex-basis, grid templates, `--panel-width`) to rem ÷16. Left in px intentionally: hairlines (`1px`/`1.5px`/`2px`/`999px`), borders/outline, `box-shadow`, `transform` offsets, `letter-spacing`, `font-size`/`line-height`, `clamp(...vw...)` font values, and `@media` breakpoints. Visual-neutral at the 16px root; enables mobile scaling via root `font-size`. One inline JS grid dimension (`forms/[slug]` template) converted too. Prettier + `npm run build` clean.
+- **Files changed**: `hub-app/src/lib/components/SectorSidebar.svelte`, `hub-app/src/lib/map/extractMapPanelData.js`, `hub-app/src/lib/components/ArcGISMap.svelte`, all 14 `.svelte` files with CSS px, `hub-app/src/routes/forms/[slug]/+page.svelte` (JS grid), `opencode-docs/AGENTS.md`
+
+## 2026-09-25 — Figma MCP hover variants (Resource Library cards)
+
+- **Diagnosis (why hover was missed)**: the `figma_*` MCP tools were configured (`~/.config/opencode/opencode.jsonc`) and the Dev Mode server answered (v1.0.0 at `127.0.0.1:3845/mcp`) but were **not loaded** in the session. Even loaded, `get_design_context(instance)` returns only the **current variant** as static markup — hover states are separate variant symbols. `get_motion_context` is keyframe-motion only (returned `{"nodes":[]}` for the cards) and does **not** expose variant/prototype smart-animate transitions; transition timing/easing is not available via MCP at all. Probed the server with raw JSON-RPC (`tools/list`, `tools/call`) instead.
+- **Inventory**: `resource library cards` frame `2578:35776` → component set `resource-library-card-v2` `3823:99596` with 12 rest + 12 `*-hover` variants. `sector-map-*-button` sets also carry `Default`/`Variant2`/`Variant3`.
+- **Hover deltas**: card background darkens (RG `#f68a46`→`#fe8538`, NT `#a9b54d`→`#93a221`, TI `#33a5b9`→`#008fa8`, CP `#81749a`→`#6b588e`, neutral `#c0c0b9`→`#a5a5a5`) and the go-to arrow changes from a right arrow (→) to `arrow-down-right` rotated -90° (↗). No transform/shadow delta in the design variants.
+- **Implemented**: added `hover` to `sectors.js` + `NEUTRAL`; `ResourceCard.svelte` cross-fades/rotates the arrow and transitions `background-color`; new asset `src/lib/assets/icons/arrow-down-right.svg`; global timing vars `--anim-duration`/`--anim-ease` on `:root` in `+layout.svelte`. Kept the existing lift/shadow hover (user likes it). autofixer + prettier + `npm run build` clean.
+- **Files changed**: `hub-app/src/lib/sectors.js`, `hub-app/src/lib/components/ResourceCard.svelte`, `hub-app/src/routes/+layout.svelte`, `hub-app/src/lib/assets/icons/arrow-down-right.svg` (new), `opencode-docs/AGENTS.md`
+
+## 2026-09-25 — Designer "Design edits" board: Montserrat, sidebar radios/copy/header
+
+- **Source**: designer's to-do section `4117:85564` ("Design edits: to do list"), plus the copy frames `sector-map-1-T+I` `3816:123343` and `Sector map: NTA-PAD` `4058:74379`, radio components `radio-button-selector-check-{green,rg,cp,ti}`.
+- **Montserrat**: `app.html` now loads Montserrat (300–900); all `'Source Sans 3'` strings replaced. Supersedes the old intentional-deviation decision (KB + figma-variables updated).
+- **Sidebar** (`SectorSidebar`): header text white→black (icon no longer inverted); radios 18px→24px and active state now sector-coloured (outer = sector button shade, dot black; off = white + `#c7c7c7` dot; hover = sector shade at 40% via `color-mix`); `--sector-button` passed from `store.js` → `maps/[id]` → sidebar; sidebar bg `#faf9f9`→`#fff`; dividers `#ccc`→`#c4c4c4`; new bold `question` line from Figma for NT + T+I.
+- **HeaderNav**: removed the logo's vertical divider (`border-right`).
+- **Colour audit**: sector colours, header `#ecece8`, page `#e0e0d9`, neutral `#c0c0b9`, radio dot `#c7c7c7`, card hovers all match Figma. Open delta = sidebar meta/legend text greys vs design black-ish.
+- **Verified**: autofixer (only pre-existing `@html`/plain-Set/effect-subscription flags), prettier, `npm run build` clean; `/`, `/resources`, both sector map routes return 200 on the user's `:5173`. Sidebar copy can't be curl-verified (map route SSR disabled) — checked in browser. (Started a stray dev server on :5174 by mistake; it exited, only user's :5173 remains.)
+- **Files changed**: `src/app.html`, `src/lib/store.js`, `src/routes/+layout.svelte`, `src/lib/components/HeaderNav.svelte`, `src/lib/components/SectorSidebar.svelte`, `src/routes/maps/[id]/+page.svelte`, `opencode-docs/AGENTS.md`, `opencode-docs/figma-variables.md`
+
+## 2026-09-25 — Design edits round 2: accordion states, landing hovers, nav colours
+
+- **Accordion (sidebar)**: confirmed against `nta-topic-protected-lands` `2681:47624` + full NTA sidebar `4058:74383` — **open header bg = `#d6d6ce`** (neutral background/1, not a sector tint), **hover = sector tint (sector/40)**, closed white. Replaced the computed `groupBg()` with CSS `.group-header` / `.open` / `.open.cross` / `:hover`. Header padding `0.5rem 1rem`, `min-height: 3.25rem`, title `22px`. Replaced `+`/`−` text with the design `open-close-20` SVGs (`accordion-open.svg` = `+`, `accordion-close.svg` = `×`).
+- **`sectors.js`** gained `tint` (sector/40) and `rowHover` (landing row hover: RG `#fc7520`, NT `#93a221`, TI `#008fa8`, CP `#625181`); plumbed through `store.js`/map page (`--sector-tint`) and the landing rows (`--row-bg`/`--row-hover`).
+- **Landing**: sector rows now darken on hover (previously only the arrow button brightened); all go-to arrows cross-fade + rotate → to ↗ like the resource cards.
+- **HeaderNav**: per-item hover/active colours (Regional Activity `#ffdc7c`/`#ffc425`; Resource Library `#66bccb`/`#33a5b9`; Data Access `#a197b3`) replacing the single grey hover and blue active. "Pull-down" (sector dropdown) items were already bold 900 — left as-is.
+- **Verified**: prettier clean, `npm run build` clean, user's `:5173` serves `/`, `/resources`, both sector maps (200); landing SSR shows the new `--row-hover` vars + `go-arrow-hover`. Sidebar copy/accordion are client-only (SSR off) — check in browser.
+- **Files changed**: `src/lib/sectors.js`, `src/lib/store.js`, `src/routes/maps/[id]/+page.svelte`, `src/lib/components/SectorSidebar.svelte`, `src/lib/components/HeaderNav.svelte`, `src/routes/+page.svelte`, new `src/lib/assets/icons/accordion-open.svg` + `accordion-close.svg`, `opencode-docs/AGENTS.md`
+
+## 2026-09-25 — Fluid type: px→rem fonts + root font-size breakpoints
+
+- **Problem**: font sizes were px (left that way in the earlier px→rem pass), so on <1200px viewports the 1600px-authored type looked oversized — fixed px doesn't scale with the viewport.
+- **Fix**: converted font sizes px→rem in the design-driven files (`routes/+page.svelte`, `routes/resources/+page.svelte`, `HeaderNav`, `ResourceCard`, `SectorSidebar`); clamp min/max terms converted to rem (vw middle kept), `--search-font` `1.4vw + 10px` → `1.4vw + 0.625rem`. Added root scale in `+layout.svelte`: `html` 16px base, **14px ≤1200px**, **12px ≤900px**. Removed the redundant HeaderNav `@media(900px)` font override. Layout dims are already rem, so the whole design scales proportionally (design 1200 variant ≈0.89×; our 1200 step is 0.875×).
+- **Verify**: `npm run build` clean; built CSS contains `@media (width<=1200px){html{font-size:14px}` and `@media (width<=900px){html{font-size:12px}`; `/`, `/resources`, `/maps/natural-treasures` 200 on `:5173`.
+- **Tune**: the two breakpoint values in `+layout.svelte` are the ramp control.
+- **Files changed**: `src/routes/+layout.svelte`, `src/routes/+page.svelte`, `src/routes/resources/+page.svelte`, `src/lib/components/HeaderNav.svelte`, `src/lib/components/ResourceCard.svelte`, `src/lib/components/SectorSidebar.svelte`, `opencode-docs/AGENTS.md`
+
+## 2026-09-25 — Remove Esri map focus border (real cause)
+
+- The blue border around the map pane is **not** a normal CSS `outline` on the view element — my earlier `.esri-view:focus{outline:none}` couldn't work. The SDK paints it on a pseudo-element using a custom property (found in `@arcgis/core/assets/esri/themes/light/main.css`):
+  `.esri-view{--esri-view-outline-color:var(--calcite-color-brand);--esri-view-outline:2px solid var(--esri-view-outline-color)}` and `.esri-view .esri-view-surface:focus:after{outline:var(--esri-view-outline);...}`.
+- **Fix** in `ArcGISMap.svelte`: scope `--esri-view-outline: none; --esri-view-outline-color: transparent;` on `.map :global(.esri-view)`. Lesson: when the SDK draws a ring, grep its theme CSS for the selector/variable instead of guessing element-level `outline`.
+- Also earlier: global `:focus{outline:none}` + `:focus-visible` black ring + `-webkit-tap-highlight-color:transparent` in `+layout.svelte` for HTML elements.
+- **Files**: `src/lib/components/ArcGISMap.svelte`, `src/routes/+layout.svelte`
+
+## 2026-09-25 — Follow-up: esri focus border override hardened
+
+- Made the ArcGISMap focus-ring override `!important` on all three SDK variables (`--esri-view-outline-color`, `--esri-view-outline`, `--esri-view-outline-offset`). Verified the emitted bundle contains `.map.svelte-90khid .esri-view{...!important}` (specificity 0,2,0 > SDK's 0,1,0). If the blue line persists after this, it's a stale cached theme CSS (hard refresh) or a different `--calcite-color-brand` source. Files: `src/lib/components/ArcGISMap.svelte`.
+
+## 2026-09-25 — esri focus border: root cause (class is on the container)
+
+- The SDK adds `esri-view` to the **container element itself**: `container.classList.add("esri-view")` (confirmed in `@arcgis/core/views/DOMContainer.js`). So `.map` **is** `.esri-view` — a `.map .esri-view` descendant selector never matches. This is why the first two overrides appeared in the CSS but did nothing.
+- Final fix (ArcGISMap.svelte): global `:global(.esri-view){--esri-view-outline-color:none!important;--esri-view-outline:none!important;--esri-view-outline-offset:0!important}` **plus** `:global(.esri-view .esri-view-surface:focus::after){outline:none!important}`. Verified emitted in the build.

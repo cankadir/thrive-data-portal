@@ -6,10 +6,14 @@
 	import LayerChart from '$lib/components/LayerChart.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import mapPin from '$lib/assets/icons/icon/map-pin.png';
+	import accordionOpen from '$lib/assets/icons/accordion-open.svg';
 
 	let {
 		sectorName = 'Sector',
 		sectorColor = '#a9b54d',
+		sectorButton = '#bec77a',
+		sectorTint = '#d0d88d',
+		question = '',
 		description = 'Rorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam eu turpis molestie, dictum est a, mattis tellus.'
 	} = $props();
 
@@ -25,8 +29,8 @@
 	let isLoading = $state(true);
 	let openGroups = new SvelteSet();
 
-	async function loadLayerInfo(layer) {
-		if (!layer.visible || inFlight.has(layer.id)) return;
+	async function loadLayerInfo(layer, force = false) {
+		if ((!layer.visible && !force) || inFlight.has(layer.id)) return;
 
 		inFlight.add(layer.id);
 		loadingMeta[layer.id] = true;
@@ -91,21 +95,14 @@
 		return /cross.?sector/i.test(title);
 	}
 
-	function groupBg(id, title) {
-		if (!openGroups.has(id)) return 'transparent';
-		if (isCrossSector(title)) return '#f68a46';
-		const num = parseInt(sectorColor.replace('#', ''), 16);
-		const r = Math.min(255, ((num >> 16) & 0xff) + Math.round(255 * 0.8));
-		const g = Math.min(255, ((num >> 8) & 0xff) + Math.round(255 * 0.8));
-		const b = Math.min(255, (num & 0xff) + Math.round(255 * 0.8));
-		return `rgb(${r}, ${g}, ${b})`;
-	}
-
-	function toggleGroup(id) {
-		if (openGroups.has(id)) {
-			openGroups.delete(id);
+	function toggleGroup(group) {
+		if (openGroups.has(group.id)) {
+			openGroups.delete(group.id);
 		} else {
-			openGroups.add(id);
+			openGroups.add(group.id);
+			// Group layers can carry a summary (portal item snippet); load it the
+			// first time the accordion is opened. Most groups won't have one.
+			loadLayerInfo(group, true);
 		}
 	}
 
@@ -124,12 +121,15 @@
 	}
 </script>
 
-<aside class="sidebar">
+<aside class="sidebar" style:--sector-button={sectorButton} style:--sector-tint={sectorTint}>
 	<header class="sidebar-header" style:background-color={sectorColor}>
 		<h2 class="sidebar-title">
-			<img src={mapPin} alt="" class="title-icon" style="filter:invert(1);" />
+			<img src={mapPin} alt="" class="title-icon" />
 			{sectorName} Sector Map
 		</h2>
+		{#if question}
+			<p class="sidebar-question">{question}</p>
+		{/if}
 		<p class="sidebar-desc">{description}</p>
 	</header>
 
@@ -143,14 +143,30 @@
 				<div class="group">
 					<button
 						class="group-header"
-						style="background-color: {groupBg(group.id, group.title)};"
-						onclick={() => toggleGroup(group.id)}
+						class:open={openGroups.has(group.id)}
+						class:cross={isCrossSector(group.title)}
+						onclick={() => toggleGroup(group)}
 					>
 						<span class="group-title">{group.title}</span>
-						<span class="toggle-icon">{openGroups.has(group.id) ? '−' : '+'}</span>
+						<img
+							class="toggle-icon"
+							class:open={openGroups.has(group.id)}
+							src={accordionOpen}
+							alt=""
+						/>
 					</button>
 
 					{#if openGroups.has(group.id)}
+						{#if layerMetadata[group.id]?.summary || layerMetadata[group.id]?.description}
+							<div class="group-detail">
+								{#if layerMetadata[group.id].summary}
+									<p class="group-summary">{layerMetadata[group.id].summary}</p>
+								{/if}
+								{#if layerMetadata[group.id].description}
+									<p class="group-description">{layerMetadata[group.id].description}</p>
+								{/if}
+							</div>
+						{/if}
 						<div class="layer-list" transition:slide={{ duration: 200 }}>
 							{#each children as layer (layer.id)}
 								<div class="layer-item">
@@ -224,20 +240,27 @@
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
-		background: #faf9f9;
+		background: #fff;
 		border-right: 1px solid #000;
-		width: var(--panel-width, 508px);
+		width: var(--panel-width, 31.75rem);
 		flex-shrink: 0;
 	}
 
 	.sidebar-header {
 		padding: 1rem;
-		border-bottom: 1px solid #ddd;
-		color: #fff;
+		border-bottom: 1px solid #c4c4c4;
+		color: #000;
 	}
 
 	.sidebar-header .sidebar-desc {
-		color: rgba(255, 255, 255, 0.85);
+		color: #222;
+	}
+
+	.sidebar-question {
+		margin: 0 0 0.5rem;
+		font-size: 1.05rem;
+		font-weight: 900;
+		line-height: 1.3;
 	}
 
 	.sidebar-title {
@@ -250,8 +273,8 @@
 	}
 
 	.title-icon {
-		width: 24px;
-		height: 24px;
+		width: 1.5rem;
+		height: 1.5rem;
 		flex-shrink: 0;
 	}
 
@@ -278,8 +301,9 @@
 		align-items: center;
 		justify-content: space-between;
 		width: 100%;
-		height: 50px;
-		padding: 6px 16px;
+		min-height: 3.25rem;
+		padding: 0.5rem 1rem;
+		background: #fff;
 		border: 1px solid #000;
 		border-bottom: none;
 		border-right: none;
@@ -287,25 +311,60 @@
 		cursor: pointer;
 	}
 
+	.group-header.open {
+		background: #d6d6ce;
+	}
+
+	.group-header.open.cross {
+		background: #f68a46;
+	}
+
+	.group-header:hover {
+		background: var(--sector-tint);
+	}
+
 	.group-title {
-		font-family: 'Source Sans 3', sans-serif;
+		font-family: 'Montserrat', sans-serif;
 		font-weight: 900;
-		font-size: 20px;
+		font-size: 1.375rem;
 		color: #080808;
 		line-height: 1.27;
 	}
 
 	.toggle-icon {
-		font-size: 24px;
-		font-weight: 300;
-		line-height: 1;
-		color: #080808;
-		width: 20px;
-		height: 20px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
+		width: 1.3125rem;
+		height: 1.3125rem;
 		flex-shrink: 0;
+		display: block;
+		transition: transform var(--anim-duration) var(--anim-ease);
+	}
+
+	/* The `+` becomes an `×` when opened. */
+	.toggle-icon.open {
+		transform: rotate(45deg);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.toggle-icon {
+			transition: none;
+		}
+	}
+
+	.group-detail {
+		padding: 0.25rem 1rem;
+		border-bottom: 1px solid #c4c4c4;
+	}
+
+	.group-summary {
+		margin: 0;
+		font-size: 0.85rem;
+		color: #222;
+	}
+
+	.group-description {
+		margin: 0.3rem 0 0;
+		font-size: 0.82rem;
+		color: #555;
 	}
 
 	.layer-list {
@@ -314,16 +373,16 @@
 	}
 
 	.layer-item {
-		padding: 0 16px;
-		border-top: 1px solid #ccc;
+		padding: 0 1rem;
+		border-top: 1px solid #c4c4c4;
 	}
 
 	.layer-toggle {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: 0.5rem;
 		width: 100%;
-		padding: 8px 0;
+		padding: 0.5rem 0;
 		border: none;
 		background: none;
 		font: inherit;
@@ -337,27 +396,39 @@
 
 	.radio {
 		flex-shrink: 0;
-		width: 18px;
-		height: 18px;
+		width: 1.5rem;
+		height: 1.5rem;
 		border-radius: 50%;
 		border: 1px solid #000;
-		background: transparent;
+		background: #fff;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 	}
 
 	.radio-dot {
-		width: 10px;
-		height: 10px;
+		width: 0.75rem;
+		height: 0.75rem;
 		border-radius: 50%;
 		background: #c7c7c7;
 	}
 
+	.radio.active {
+		background: var(--sector-button);
+	}
+
+	.radio.active .radio-dot {
+		background: #000;
+	}
+
+	.layer-toggle:hover .radio:not(.active) {
+		background: var(--sector-tint);
+	}
+
 	.layer-name {
-		font-family: 'Source Sans 3', sans-serif;
+		font-family: 'Montserrat', sans-serif;
 		font-weight: 300;
-		font-size: 20px;
+		font-size: 1.25rem;
 		color: #000;
 		line-height: 1.2;
 	}
@@ -418,8 +489,8 @@
 
 	.legend-symbol :global(svg),
 	.legend-symbol :global(img) {
-		max-width: 16px;
-		max-height: 16px;
+		max-width: 1rem;
+		max-height: 1rem;
 		display: block;
 	}
 

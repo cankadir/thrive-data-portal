@@ -1,11 +1,12 @@
 <script>
 	import goToIcon from '$lib/assets/icons/go-to.svg';
+	import hoverArrowIcon from '$lib/assets/icons/arrow-down-right.svg';
 	import datasetIcon from '$lib/assets/icons/sector/dataset.svg';
 	import { sectorById } from '$lib/sectors';
 
 	let { tool } = $props();
 
-	const NEUTRAL = { color: '#c0c0b9', button: '#d6d6ce', icon: datasetIcon };
+	const NEUTRAL = { color: '#c0c0b9', hover: '#a5a5a5', button: '#d6d6ce', icon: datasetIcon };
 
 	function clean(value) {
 		if (value === null || value === undefined) return '';
@@ -57,6 +58,7 @@
 
 		return {
 			color: style.color,
+			hover: style.hover,
 			button: style.button,
 			icon: style.icon,
 			typeLabel: clean(a.tool_type) || 'Resource',
@@ -70,7 +72,7 @@
 
 <a
 	class="card"
-	style="--card: {d.color}; --card-button: {d.button}"
+	style="--card: {d.color}; --card-hover: {d.hover}; --card-button: {d.button}"
 	href={d.url || undefined}
 	target={d.url ? '_blank' : undefined}
 	rel={d.url ? 'noopener noreferrer' : undefined}
@@ -93,7 +95,10 @@
 	{/each}
 
 	{#if d.url}
-		<span class="go-btn" aria-hidden="true"><img src={goToIcon} alt="" /></span>
+		<span class="go-btn" aria-hidden="true">
+			<img class="go-arrow go-arrow-rest" src={goToIcon} alt="" />
+			<img class="go-arrow go-arrow-hover" src={hoverArrowIcon} alt="" />
+		</span>
 	{/if}
 </a>
 
@@ -102,19 +107,21 @@
 		position: relative;
 		display: flex;
 		flex-direction: column;
-		min-height: 300px;
-		padding: 20px 20px 58px;
-		background: var(--card);
-		border-radius: 20px;
+		min-height: 18.75rem;
+		padding: 1.25rem 1.25rem 3.625rem;
+		background-color: var(--card);
+		border-radius: 1.25rem;
 		box-shadow: 8px 8px 4px rgba(0, 0, 0, 0.25);
 		color: #000;
 		text-decoration: none;
 		transition:
-			transform 0.12s ease,
-			box-shadow 0.12s ease;
+			background-color var(--anim-duration) var(--anim-ease),
+			transform var(--anim-duration) var(--anim-ease),
+			box-shadow var(--anim-duration) var(--anim-ease);
 	}
 
 	.card:hover {
+		background-color: var(--card-hover);
 		transform: translate(-2px, -2px);
 		box-shadow: 10px 10px 6px rgba(0, 0, 0, 0.25);
 	}
@@ -122,19 +129,19 @@
 	.card-head {
 		display: flex;
 		align-items: center;
-		gap: 12px;
-		margin-bottom: 8px;
+		gap: 0.75rem;
+		margin-bottom: 0.5rem;
 	}
 
 	.card-icon {
-		width: 30px;
-		height: 30px;
+		width: 1.875rem;
+		height: 1.875rem;
 		flex-shrink: 0;
 		object-fit: contain;
 	}
 
 	.card-type {
-		font-size: 18px;
+		font-size: 1.125rem;
 		font-weight: 600;
 		line-height: 1;
 		letter-spacing: 1.26px;
@@ -142,21 +149,21 @@
 	}
 
 	.card-title {
-		margin: 0 0 8px;
-		font-size: 24px;
+		margin: 0 0 0.5rem;
+		font-size: 1.5rem;
 		font-weight: 900;
 		line-height: 26px;
 	}
 
 	.card-desc {
-		margin: 0 0 8px;
-		font-size: 16px;
+		margin: 0 0 0.5rem;
+		font-size: 1rem;
 		line-height: 22px;
 	}
 
 	.card-meta {
 		margin: 0;
-		font-size: 16px;
+		font-size: 1rem;
 		line-height: 22px;
 	}
 
@@ -166,24 +173,53 @@
 
 	.go-btn {
 		position: absolute;
-		right: 14px;
-		bottom: 16px;
+		right: 0.875rem;
+		bottom: 1rem;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 50px;
-		height: 31px;
+		width: 3.125rem;
+		height: 1.9375rem;
 		background: var(--card-button);
 		border: 1px solid #000;
-		border-radius: 10px;
+		border-radius: 0.625rem;
 	}
 
-	.go-btn img {
-		width: 34.75px;
-		height: 20px;
+	.go-arrow {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transition:
+			opacity var(--anim-duration) var(--anim-ease),
+			transform var(--anim-duration) var(--anim-ease);
 	}
 
-	.card:hover .go-btn {
-		filter: brightness(0.95);
+	.go-arrow-rest {
+		width: 2.171875rem;
+		height: 1.25rem;
+		transform: translate(-50%, -50%);
+	}
+
+	.go-arrow-hover {
+		width: 1.25rem;
+		height: 1.25rem;
+		opacity: 0;
+		transform: translate(-50%, -50%) rotate(0deg);
+	}
+
+	.card:hover .go-arrow-rest {
+		opacity: 0;
+	}
+
+	.card:hover .go-arrow-hover {
+		opacity: 1;
+		transform: translate(-50%, -50%) rotate(-90deg);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.card,
+		.go-arrow {
+			transition: none;
+		}
 	}
 </style>

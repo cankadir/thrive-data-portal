@@ -6,7 +6,7 @@
 	);
 
 	const template = $derived(
-		['minmax(220px, 2fr)', ...columns.map(() => 'minmax(0, 1fr)'), 'auto'].join(' ')
+		['minmax(13.75rem, 2fr)', ...columns.map(() => 'minmax(0, 1fr)'), 'auto'].join(' ')
 	);
 
 	function statusFor(value) {
@@ -88,7 +88,7 @@
 
 <style>
 	.form-page {
-		max-width: 1200px;
+		max-width: 75rem;
 		margin: 0 auto;
 		padding: 3rem 1.5rem 5rem;
 	}
@@ -146,7 +146,7 @@
 		margin-right: 1rem;
 		padding: 0.4rem 0.9rem;
 		border: 1px solid #3064b2;
-		border-radius: 6px;
+		border-radius: 0.375rem;
 		color: #3064b2;
 		font-weight: 600;
 		white-space: nowrap;

@@ -38,7 +38,7 @@
 	<div class="nav-menu">
 		<div class="nav-items">
 			<a
-				class="nav-item"
+				class="nav-item nav-activity"
 				class:active={page.route.id === '/regional-activity'}
 				href="/regional-activity">Regional Activity Map</a
 			>
@@ -64,11 +64,15 @@
 				</div>
 			</div>
 
-			<a class="nav-item" class:active={page.route.id === '/resources'} href="/resources"
-				>Resource Library</a
+			<a
+				class="nav-item nav-resources"
+				class:active={page.route.id === '/resources'}
+				href="/resources">Resource Library</a
 			>
 
-			<a class="nav-item" href="/data-access" onclick={(e) => e.preventDefault()}>Data Access</a>
+			<a class="nav-item nav-data" href="/data-access" onclick={(e) => e.preventDefault()}
+				>Data Access</a
+			>
 		</div>
 
 		{#if !isLanding}
@@ -90,25 +94,24 @@
 	.nav {
 		display: flex;
 		align-items: stretch;
-		height: 60px;
+		height: 3.75rem;
 		background: #ecece8;
 		border: 1px solid #000;
 	}
 
 	.nav-logo {
-		flex: 0 1 clamp(250px, 32%, 50%);
-		min-width: 250px;
+		flex: 0 1 clamp(15.625rem, 32%, 50%);
+		min-width: 15.625rem;
 		display: flex;
 		align-items: center;
-		padding: 0 16px;
-		border-right: 1px solid #000;
+		padding: 0 1rem;
 	}
 
-	/* On map pages the logo column matches the side panel so the divider lines up.
+	/* On map pages the logo column matches the side panel width.
 	   -1px accounts for the nav's own left border, which the panel doesn't have. */
 	.nav-logo.on-map {
-		flex: 0 0 calc(var(--panel-width, 508px) - 1px);
-		width: calc(var(--panel-width, 508px) - 1px);
+		flex: 0 0 calc(var(--panel-width, 31.75rem) - 1px);
+		width: calc(var(--panel-width, 31.75rem) - 1px);
 	}
 
 	.logo-link {
@@ -117,7 +120,7 @@
 	}
 
 	.logo {
-		height: 40px;
+		height: 2.5rem;
 		width: auto;
 	}
 
@@ -135,31 +138,54 @@
 		align-items: stretch;
 		height: 100%;
 		min-width: 0;
-		padding: 0 8px;
+		padding: 0 0.5rem;
+		gap: 1rem;
+		/* Inherited by every nav link + dropdown item. */
+		line-height: 1.5rem;
 	}
 
-	.nav-item {
-		flex: 0 1 255.75px;
+	/* Shared by every nav link + dropdown item — only the colours differ. */
+	.nav-item,
+	.sector-toggle,
+	.dropdown-item {
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		text-decoration: none;
-		font-family: 'Source Sans 3', sans-serif;
+		font-family: 'Montserrat', sans-serif;
 		font-weight: 600;
-		font-size: 18px;
-		line-height: 23px;
+		font-size: 1.125rem;
 		color: #000;
 		text-align: center;
+	}
+
+	.nav-item {
+		flex: 0 1 15.984375rem;
 		min-width: 0;
 		transition: background 0.15s;
 	}
 
-	.nav-item:hover {
-		background: #dedcd4;
+	/* Per-item colours. */
+	.nav-activity {
+		--nav-hover: #ffdc7c;
+		--nav-active: #ffc425;
+	}
+
+	.nav-resources {
+		--nav-hover: #66bccb;
+		--nav-active: #33a5b9;
+	}
+
+	.nav-data {
+		--nav-hover: #a197b3;
+	}
+
+	.nav-item:not(.nav-sector):hover {
+		background: var(--nav-hover);
 	}
 
 	.nav-item.active {
-		background: #33a5b9;
+		background: var(--nav-active);
 	}
 
 	.nav-sector {
@@ -170,17 +196,8 @@
 	}
 
 	.sector-toggle {
-		display: flex;
-		align-items: center;
-		justify-content: center;
 		flex: 1;
-		padding: 1px 8px;
-		text-decoration: none;
-		font-weight: 600;
-		font-size: 18px;
-		line-height: 23px;
-		color: #000;
-		text-align: center;
+		padding: 1px 0.5rem;
 		white-space: normal;
 		overflow-wrap: break-word;
 		transition: filter 0.15s;
@@ -205,22 +222,12 @@
 	}
 
 	.dropdown-item {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		min-height: 60px;
+		min-height: 3.75rem;
 		border: 1px solid #000;
 		border-top: none;
-		text-decoration: none;
-		font-family: 'Source Sans 3', sans-serif;
-		font-weight: 900;
-		font-size: 18px;
-		line-height: 20px;
-		color: #000;
-		text-align: center;
 		white-space: normal;
 		overflow-wrap: break-word;
-		padding: 6px 8px;
+		padding: 0.375rem 0.5rem;
 		transition: filter 0.15s;
 	}
 
@@ -233,21 +240,12 @@
 		display: flex;
 		align-items: center;
 		justify-content: flex-end;
-		padding: 0 16px;
+		padding: 0 1rem;
 	}
 
 	.home-link {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-	}
-
-	@media (max-width: 900px) {
-		.nav-item,
-		.sector-toggle,
-		.dropdown-item {
-			font-size: 14px;
-			line-height: 18px;
-		}
 	}
 </style>
