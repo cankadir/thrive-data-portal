@@ -259,14 +259,14 @@
 	.sidebar-question {
 		margin: 0 0 0.5rem;
 		font-size: 1.05rem;
-		font-weight: 900;
+		font-weight: 700;
 		line-height: 1.3;
 	}
 
 	.sidebar-title {
 		margin: 0 0 0.5rem;
 		font-size: 1.25rem;
-		font-weight: 900;
+		font-weight: 700;
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
@@ -325,7 +325,7 @@
 
 	.group-title {
 		font-family: 'Montserrat', sans-serif;
-		font-weight: 900;
+		font-weight: 700;
 		font-size: 1.375rem;
 		color: #080808;
 		line-height: 1.27;
