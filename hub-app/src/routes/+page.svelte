@@ -138,7 +138,7 @@
 	.hero h1 {
 		margin: 0;
 		font-size: clamp(3rem, 6vw, 4.75rem);
-		font-weight: 900;
+		font-weight: 700;
 		line-height: 1.05;
 		color: #008fa8;
 	}
@@ -167,7 +167,7 @@
 		min-height: 4.8125rem;
 		margin: 0 0 0.5rem;
 		font-size: 1.375rem;
-		font-weight: 900;
+		font-weight: 700;
 		line-height: 26px;
 		color: #444;
 	}
@@ -190,7 +190,7 @@
 		border: 1px solid #000;
 		border-radius: 1rem 1rem 0 0;
 		font-size: 1.25rem;
-		font-weight: 900;
+		font-weight: 700;
 		line-height: 22px;
 	}
 
@@ -227,7 +227,7 @@
 		flex: 1;
 		min-width: 0;
 		font-size: 1.25rem;
-		font-weight: 900;
+		font-weight: 700;
 		line-height: 22px;
 	}
 
@@ -249,7 +249,7 @@
 	.card h2 {
 		margin: 0.5rem 0 0;
 		font-size: 1.375rem;
-		font-weight: 900;
+		font-weight: 700;
 		line-height: 32px;
 	}
 
@@ -334,7 +334,7 @@
 	.steps-foot {
 		margin: 1.5rem 0 0;
 		font-size: 1.375rem;
-		font-weight: 900;
+		font-weight: 700;
 		line-height: 26px;
 		color: #444;
 	}
@@ -357,7 +357,7 @@
 	.about-text h2 {
 		margin: 0 0 2rem;
 		font-size: 2.25rem;
-		font-weight: 900;
+		font-weight: 700;
 		line-height: 48px;
 	}
 
@@ -403,7 +403,7 @@
 	.tagline h2 {
 		margin: 0 0 0.75rem;
 		font-size: clamp(2.25rem, 5vw, 3.625rem);
-		font-weight: 900;
+		font-weight: 700;
 		line-height: 1.05;
 		color: #625181;
 	}

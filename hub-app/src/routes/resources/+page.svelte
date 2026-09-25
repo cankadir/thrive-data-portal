@@ -235,14 +235,14 @@
 	.headline h1 {
 		margin: 0;
 		font-size: clamp(2.75rem, 5vw, 4rem);
-		font-weight: 900;
+		font-weight: 700;
 		line-height: 1.05;
 	}
 
 	.lead {
 		margin: 0;
 		font-size: 1.25rem;
-		font-weight: 900;
+		font-weight: 700;
 		line-height: 28px;
 	}
 
@@ -257,7 +257,7 @@
 		padding: 0.375em 0.625em;
 		font-family: inherit;
 		font-size: var(--search-font);
-		font-weight: 900;
+		font-weight: 700;
 		line-height: 1.1;
 		color: #000;
 		background: #fff;
@@ -374,7 +374,7 @@
 	.tagline h2 {
 		margin: 0;
 		font-size: clamp(2rem, 4vw, 3rem);
-		font-weight: 900;
+		font-weight: 700;
 		line-height: 48px;
 	}
 
