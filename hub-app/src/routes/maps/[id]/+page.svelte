@@ -17,6 +17,7 @@
 			<SectorSidebar
 				sectorName={sector.name}
 				sectorColor={sector.color}
+				sectorIcon={sector.icon}
 				sectorButton={sector.button}
 				sectorTint={sector.tint}
 				question={sector.question}
@@ -26,7 +27,11 @@
 			<MapLayerPanel />
 		{/if}
 		<div class="map-container">
-			<ArcGISMap mapId={map.mapId} defaultExtent={secondaryBoundaryExtent} />
+			<ArcGISMap
+				mapId={map.mapId}
+				defaultExtent={secondaryBoundaryExtent}
+				accentColor={sector?.color ?? '#a9b54d'}
+			/>
 		</div>
 	</MapPageLayout>
 {:else}

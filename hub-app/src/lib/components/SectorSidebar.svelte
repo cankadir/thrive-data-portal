@@ -5,17 +5,20 @@
 	import { fetchLayerMetadata, fetchLayerVisualFieldAlias } from '$lib/map/fetchSublayerMetadata';
 	import LayerChart from '$lib/components/LayerChart.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
-	import mapPin from '$lib/assets/icons/icon/map-pin.png';
 	import accordionOpen from '$lib/assets/icons/accordion-open.svg';
+	import arrowRight from '$lib/assets/icons/arrow-right.svg';
 
 	let {
 		sectorName = 'Sector',
 		sectorColor = '#a9b54d',
+		sectorIcon = '',
 		sectorButton = '#bec77a',
 		sectorTint = '#d0d88d',
 		question = '',
 		description = 'Rorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam eu turpis molestie, dictum est a, mattis tellus.'
 	} = $props();
+
+	let introCollapsed = $state(false);
 
 	let layerMetadata = $state({});
 	let layerAlias = $state({});
@@ -28,6 +31,8 @@
 	let legend = $state([]);
 	let isLoading = $state(true);
 	let openGroups = new SvelteSet();
+	// Plain flag (not $state) so auto-opening the first group happens once.
+	let autoOpenedFirstGroup = false;
 
 	async function loadLayerInfo(layer, force = false) {
 		if ((!layer.visible && !force) || inFlight.has(layer.id)) return;
@@ -55,6 +60,16 @@
 			for (const l of v) {
 				if (l.visible && l.depth > 0) {
 					loadLayerInfo(l);
+				}
+			}
+
+			// Open the first accordion once the groups are available.
+			if (!autoOpenedFirstGroup) {
+				const first = buildGroups(v)[0];
+				if (first) {
+					autoOpenedFirstGroup = true;
+					openGroups.add(first.group.id);
+					loadLayerInfo(first.group, true);
 				}
 			}
 		});
@@ -123,14 +138,29 @@
 
 <aside class="sidebar" style:--sector-button={sectorButton} style:--sector-tint={sectorTint}>
 	<header class="sidebar-header" style:background-color={sectorColor}>
-		<h2 class="sidebar-title">
-			<img src={mapPin} alt="" class="title-icon" />
-			{sectorName} Sector Map
-		</h2>
-		{#if question}
-			<p class="sidebar-question">{question}</p>
+		<div class="header-row">
+			{#if sectorIcon}
+				<img class="sector-icon" src={sectorIcon} alt="" />
+			{/if}
+			<h2 class="sidebar-title">{sectorName}</h2>
+			<button
+				class="header-toggle"
+				onclick={() => (introCollapsed = !introCollapsed)}
+				aria-expanded={!introCollapsed}
+				aria-label={introCollapsed ? 'Show sector introduction' : 'Hide sector introduction'}
+			>
+				<img class="toggle-icon" class:open={!introCollapsed} src={accordionOpen} alt="" />
+			</button>
+		</div>
+
+		{#if !introCollapsed}
+			<div class="header-body">
+				{#if question}
+					<p class="sidebar-question">{question}</p>
+				{/if}
+				<p class="sidebar-desc">{description}</p>
+			</div>
 		{/if}
-		<p class="sidebar-desc">{description}</p>
 	</header>
 
 	<div class="sidebar-body">
@@ -179,22 +209,11 @@
 												<span class="radio-dot"></span>
 											{/if}
 										</span>
-										<span class="layer-name">{layer.title}</span>
+										<span class="layer-name" class:active={layer.visible}>{layer.title}</span>
 									</button>
 
 									{#if layer.visible}
 										<div class="layer-detail" transition:slide={{ duration: 150 }}>
-											{#if loadingMeta[layer.id]}
-												<p class="meta-loading">Loading…</p>
-											{:else}
-												{#if layerMetadata[layer.id]?.summary}
-													<p class="layer-summary">{layerMetadata[layer.id].summary}</p>
-												{/if}
-												{#if layerMetadata[layer.id]?.description}
-													<p class="layer-description">{layerMetadata[layer.id].description}</p>
-												{/if}
-											{/if}
-
 											{#if (legendFor(layer.id)?.items ?? []).length > 0}
 												{#if layerAlias[layer.id]}
 													<p class="legend-heading">{layerAlias[layer.id]}</p>
@@ -211,6 +230,17 @@
 												</ul>
 											{/if}
 
+											{#if loadingMeta[layer.id]}
+												<p class="meta-loading">Loading…</p>
+											{:else}
+												{#if layerMetadata[layer.id]?.summary}
+													<p class="layer-summary">{layerMetadata[layer.id].summary}</p>
+												{/if}
+												{#if layerMetadata[layer.id]?.description}
+													<p class="layer-description">{layerMetadata[layer.id].description}</p>
+												{/if}
+											{/if}
+
 											{#if layerMetadata[layer.id]?.copyright}
 												<p class="layer-copyright">{layerMetadata[layer.id].copyright}</p>
 											{/if}
@@ -222,6 +252,21 @@
 											{#each Array.from({ length: layer.chartCount }, (_, i) => i) as index (index)}
 												<LayerChart layerId={layer.id} chartIndex={index} />
 											{/each}
+										</div>
+									{/if}
+
+									{#if layer.visible && /protected\s*lands/i.test(layer.title)}
+										<div class="related-resource">
+											<p class="related-text">
+												Related Resource:
+												<a
+													class="related-link"
+													href="https://www.thriveregionalpartnership.org/"
+													target="_blank"
+													rel="noopener noreferrer">Interactive Conservation Index</a
+												>
+											</p>
+											<img class="related-arrow" src={arrowRight} alt="" aria-hidden="true" />
 										</div>
 									{/if}
 								</div>
@@ -247,42 +292,67 @@
 	}
 
 	.sidebar-header {
-		padding: 1rem;
-		border-bottom: 1px solid #c4c4c4;
+		padding: 0.5625rem 0.75rem 1rem;
 		color: #000;
 	}
 
-	.sidebar-header .sidebar-desc {
-		color: #222;
+	.header-row {
+		display: flex;
+		align-items: center;
+		gap: 0.625rem;
 	}
 
-	.sidebar-question {
-		margin: 0 0 0.5rem;
-		font-size: 1.05rem;
-		font-weight: 700;
-		line-height: 1.3;
+	.sector-icon {
+		width: 3rem;
+		height: 3rem;
+		flex-shrink: 0;
+		object-fit: contain;
 	}
 
 	.sidebar-title {
-		margin: 0 0 0.5rem;
-		font-size: 1.25rem;
+		flex: 1;
+		min-width: 0;
+		margin: 0;
+		font-size: 1.875rem;
 		font-weight: 700;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
+		line-height: 2.25rem;
 	}
 
-	.title-icon {
+	.header-toggle {
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.75rem;
+		height: 1.75rem;
+		padding: 0;
+		border: none;
+		background: none;
+		cursor: pointer;
+	}
+
+	.header-toggle .toggle-icon {
 		width: 1.5rem;
 		height: 1.5rem;
-		flex-shrink: 0;
+	}
+
+	.header-body {
+		margin-top: 0.625rem;
+	}
+
+	.sidebar-question {
+		margin: 0 0 0.75rem;
+		font-size: 1.5rem;
+		font-weight: 700;
+		line-height: 1.625rem;
 	}
 
 	.sidebar-desc {
 		margin: 0;
-		font-size: 0.9rem;
-		color: #555;
-		line-height: 1.5;
+		font-size: 1.25rem;
+		font-weight: 400;
+		line-height: 1.625rem;
+		color: #000;
 	}
 
 	.sidebar-body {
@@ -351,20 +421,55 @@
 	}
 
 	.group-detail {
-		padding: 0.25rem 1rem;
-		border-bottom: 1px solid #c4c4c4;
+		padding: 0.75rem 1rem;
 	}
 
 	.group-summary {
 		margin: 0;
-		font-size: 0.85rem;
-		color: #222;
+		font-size: 1.125rem;
+		line-height: 1.4;
+		color: #000;
 	}
 
 	.group-description {
 		margin: 0.3rem 0 0;
-		font-size: 0.82rem;
-		color: #555;
+		font-size: 1.125rem;
+		line-height: 1.4;
+		color: #000;
+	}
+
+	/* Hard-coded "Related Resource" banner (Protected Lands layer only). */
+	.related-resource {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		min-height: 3.1875rem;
+		/* Break out of the `.layer-item` horizontal padding to sit full-bleed. */
+		margin: 0 -1rem;
+		padding: 0.5rem 1rem;
+		background: #81749a;
+		color: #fff;
+		font-size: 1.125rem;
+		font-weight: 700;
+		line-height: 1.3;
+	}
+
+	.related-text {
+		margin: 0;
+	}
+
+	.related-link {
+		color: #fff;
+		text-decoration: underline;
+	}
+
+	.related-arrow {
+		flex-shrink: 0;
+		width: 1.5rem;
+		height: auto;
+		/* The icon ships black; recolour it white for the banner. */
+		filter: brightness(0) invert(1);
 	}
 
 	.layer-list {
@@ -396,8 +501,8 @@
 
 	.radio {
 		flex-shrink: 0;
-		width: 1.5rem;
-		height: 1.5rem;
+		width: 1.35rem;
+		height: 1.35rem;
 		border-radius: 50%;
 		border: 1px solid #000;
 		background: #fff;
@@ -433,6 +538,10 @@
 		line-height: 1.2;
 	}
 
+	.layer-name.active {
+		font-weight: 600;
+	}
+
 	.layer-detail {
 		padding: 0 0 0.5rem 2rem;
 	}
@@ -450,26 +559,24 @@
 
 	.layer-description {
 		margin: 0 0 0.4rem;
-		font-size: 0.82rem;
-		color: #555;
-		line-height: 1.5;
+		font-size: 1rem;
+		color: #000;
+		line-height: 1.35;
 	}
 
 	.layer-summary {
 		margin: 0 0 0.3rem;
-		font-size: 0.85rem;
-		font-weight: 600;
+		font-size: 1rem;
+		font-weight: 400;
 		color: #222;
 		line-height: 1.5;
 	}
 
 	.legend-heading {
 		margin: 0.25rem 0 0.15rem;
-		font-size: 0.75rem;
-		font-weight: 700;
+		font-size: 1rem;
+		font-weight: 400;
 		color: #666;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
 	}
 
 	.legend-list {
@@ -482,15 +589,17 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-		font-size: 0.82rem;
+		font-size: 1rem;
 		color: #444;
 		padding: 0.12rem 0;
 	}
 
 	.legend-symbol :global(svg),
 	.legend-symbol :global(img) {
-		max-width: 1rem;
-		max-height: 1rem;
+		width: auto;
+		height: 1.2rem;
+		max-width: 3.6rem;
+		object-fit: contain;
 		display: block;
 	}
 

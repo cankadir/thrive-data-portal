@@ -1,18 +1,27 @@
 <script>
 	import { arcgisPortalUrl } from '$lib/storeLinks';
-	import { mapView, mapLayers, mapLegend, mapLoading, clearMapState } from '$lib/mapStore';
+	import {
+		mapView,
+		mapLayers,
+		mapLegend,
+		mapLoading,
+		mapPopup,
+		clearMapState
+	} from '$lib/mapStore';
 	import {
 		extractLayers,
 		extractLegendLazy,
 		watchMapLayerChanges
 	} from '$lib/map/extractMapPanelData';
 	import { clearSublayerMetadataCache } from '$lib/map/fetchSublayerMetadata';
+	import { regionExtent } from '$lib/map/region';
 	import Spinner from '$lib/components/Spinner.svelte';
+	import MapPopup from '$lib/components/MapPopup.svelte';
 	import WebMap from '@arcgis/core/WebMap.js';
 	import MapView from '@arcgis/core/views/MapView.js';
 	import '@arcgis/core/assets/esri/themes/light/main.css';
 
-	let { mapId, defaultExtent = null } = $props();
+	let { mapId, defaultExtent = null, accentColor = '#a9b54d' } = $props();
 
 	/** @param {import('@arcgis/core/views/MapView').default} view */
 	async function extractPanel(view) {
@@ -31,6 +40,7 @@
 		let view;
 		let cancelled = false;
 		let layerWatchHandle;
+		let popupClickHandle;
 
 		/**
 		 * Zoom to the `thrive_secondary_boundary` layer when the webmap has it,
@@ -58,6 +68,8 @@
 					view.goTo(layer.fullExtent);
 					return;
 				}
+			} else {
+				console.log( "Second boundary layer is not here" )
 			}
 
 			if (fallbackExtent) view.goTo(fallbackExtent);
@@ -73,8 +85,45 @@
 					portalItem: { id: mapId, portal: { url: arcgisPortalUrl } }
 				});
 
-				view = new MapView({ container, map: webmap });
+				view = new MapView({
+					container,
+					map: webmap,
+					extent: regionExtent,
+					constraints: {
+						geometry: regionExtent,
+						minScale: 2500000,
+						maxScale: 2000,
+						rotationEnabled: false
+					}
+				});
+				// Use our own popup shell, not the built-in Esri popup.
+				view.popupEnabled = false;
 				mapView.set(view);
+
+				popupClickHandle = view.on('click', async (event) => {
+					try {
+						const hit = await view.hitTest(event);
+						const result = hit.results.find(
+							(r) =>
+								r.graphic?.layer &&
+								r.graphic.layer.popupEnabled !== false &&
+								(r.graphic.popupTemplate ?? r.graphic.layer?.popupTemplate)
+						);
+
+						if (!result?.graphic) {
+							mapPopup.set(null);
+							return;
+						}
+
+						const graphic = result.graphic;
+						if (!graphic.popupTemplate && graphic.layer?.popupTemplate) {
+							graphic.popupTemplate = graphic.layer.popupTemplate;
+						}
+						mapPopup.set({ feature: graphic, location: event.mapPoint });
+					} catch (error) {
+						console.error('Popup hit test failed:', error);
+					}
+				});
 
 				zoomToSecondaryBoundary(view, defaultExtent);
 
@@ -96,6 +145,8 @@
 		return () => {
 			cancelled = true;
 			layerWatchHandle?.remove?.();
+			popupClickHandle?.remove?.();
+			mapPopup.set(null);
 			view?.destroy();
 			clearMapState();
 			clearSublayerMetadataCache();
@@ -105,6 +156,7 @@
 
 <div class="map-wrap">
 	<div class="map" {@attach attachMap}></div>
+	<MapPopup color={accentColor} />
 	{#if $mapLoading}
 		<Spinner overlay label="Loading map" />
 	{/if}

@@ -27,6 +27,7 @@ export const sectorDefaults = {
 	'natural-treasures': {
 		name: 'Natural Treasures',
 		color: sectorById['natural-treasures'].color,
+		icon: sectorById['natural-treasures'].icon,
 		button: sectorById['natural-treasures'].button,
 		tint: sectorById['natural-treasures'].tint,
 		question:
@@ -37,6 +38,7 @@ export const sectorDefaults = {
 	'community-prosperity': {
 		name: 'Community Prosperity',
 		color: sectorById['community-prosperity'].color,
+		icon: sectorById['community-prosperity'].icon,
 		button: sectorById['community-prosperity'].button,
 		tint: sectorById['community-prosperity'].tint,
 		description:
@@ -45,6 +47,7 @@ export const sectorDefaults = {
 	'responsible-growth': {
 		name: 'Responsible Growth',
 		color: sectorById['responsible-growth'].color,
+		icon: sectorById['responsible-growth'].icon,
 		button: sectorById['responsible-growth'].button,
 		tint: sectorById['responsible-growth'].tint,
 		description:
@@ -53,6 +56,7 @@ export const sectorDefaults = {
 	'transportation-infrastructure': {
 		name: 'Transportation + Infrastructure',
 		color: sectorById['transportation-infrastructure'].color,
+		icon: sectorById['transportation-infrastructure'].icon,
 		button: sectorById['transportation-infrastructure'].button,
 		tint: sectorById['transportation-infrastructure'].tint,
 		question:

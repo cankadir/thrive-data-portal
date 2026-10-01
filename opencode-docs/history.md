@@ -305,3 +305,160 @@
 
 - The SDK adds `esri-view` to the **container element itself**: `container.classList.add("esri-view")` (confirmed in `@arcgis/core/views/DOMContainer.js`). So `.map` **is** `.esri-view` — a `.map .esri-view` descendant selector never matches. This is why the first two overrides appeared in the CSS but did nothing.
 - Final fix (ArcGISMap.svelte): global `:global(.esri-view){--esri-view-outline-color:none!important;--esri-view-outline:none!important;--esri-view-outline-offset:0!important}` **plus** `:global(.esri-view .esri-view-surface:focus::after){outline:none!important}`. Verified emitted in the build.
+
+## 2026-09-30 — Landing 1-2-3 cards: titles aligned
+
+- **Ask**: cards 2/3 titles differed in spacing/type from card 1; card 1 correct, match the others and align.
+- **Change** (`src/routes/+page.svelte`): shared `.sector-head, .card h2` base rule (flex/center, `padding: 0.25rem 0.75rem`, `min-height: 3.5rem`, `1.25rem/22px` 700) so all three titles use identical type + left inset. `.card` lost its `padding`/`gap`; content wrapped in `.card-body` (`padding: 1rem 0.75rem`, gap 1rem). The `<hr>` under each yellow-card title was dropped in favour of `.card h2 { border-bottom: 1px solid #000 }`, which sits at the same y as card 1's header/row divider.
+- **Verified**: autofixer clean, prettier clean, `:5173` returns 200. Visual check in browser (SSR-only, client render).
+
+## 2026-09-30 — 400 baseline, resource-card meta labels + go-to arrows
+
+- **Font weight baseline**: user asked that all site text default to 400 unless a component specifies otherwise. In `+layout.svelte`, `html/body` gained `font-weight: 400` and the blanket `h1–h6 { font-weight: 900 }` became `400`. Every explicit component weight (600/700 etc.) is untouched. Headings with no explicit weight now render 400 (e.g. `regional-activity` h1, both `/forms` h1s, `MapLayerPanel` h2).
+- **Resource card meta labels**: `.meta-label` (Date / Last updated / Sector / Author) 600 → 700 in `ResourceCard.svelte`.
+- **Resource card go-to (Figma `4155:76211` hover `↗` / `4155:76212` rest `→`, both 32×32 with a 20×20 arrow)**: per user, "no bg colour, just the icon and size". Removed the coloured button — `.go-btn` is now a bare 20×20 (`1.25rem`) box at bottom-right with no background/border/radius; both arrows are `1.25rem × 1.25rem` (rest `go-to.svg`, hover `arrow-down-right.svg` rotated `-90deg`). Removed the now-unused `--card-button` custom prop, `d.button`, and `NEUTRAL.button`.
+- **Verified**: autofixer + prettier clean, `:5173/resources` 200.
+
+## 2026-09-30 (later) — Resource card go-to: proper square arrow, border, stable size
+
+- **Problem**: the resource-card unhovered arrow was the wide `go-to.svg` (34.75×20) force-fit into a square, so it looked stretched; the hover arrow swelled/shifted and pointed down.
+- **Fix**: added `src/lib/assets/icons/arrow-right.svg` (the user-supplied 20×20 `viewBox` → arrow, no `preserveAspectRatio="none"`). `ResourceCard.svelte` now imports that one asset for **both** states (dropped `go-to.svg`/`arrow-down-right.svg` here). `.go-btn` is an explicit `2rem × 2rem` box at bottom-right with `border: 1px solid #000` + `border-radius: 0.5rem` (border, rounded, no fill). Arrows are absolutely centred at `1.25rem`; hover rotates the same arrow `-45deg` (→ becomes ↗, up-right), so the box never changes size and there is no jump.
+- **Verified**: autofixer + prettier clean, `:5173/resources` 200. Landing still uses the old `go-to.svg`/`arrow-down-right.svg` — untouched.
+
+## 2026-09-30 (arrow animation) — single rotating arrow
+
+- Resource-card go-to is now **one** `arrow-right.svg` icon; hover animates its rotation `0 → -45deg` (→ becomes ↗) via `transform` transition instead of cross-fading two stacked icons. Removed `.go-arrow-rest` / `.go-arrow-hover` and the opacity rules.
+- Verified: autofixer + prettier clean, `:5173/resources` 200.
+
+## 2026-09-30 (sector map header) — header matches Figma `header/NTA`
+
+- **Figma** `4124:106523` (`header/NTA`, 508 wide): sector-colour band, `padding: 9px 12px 16px`; row = 48px sector icon + 30px/36 bold title + 28px `open-close` × at the right; 10px gap; then question 24px/26 bold with 12px bottom margin; description 20px/26 regular.
+- **`SectorSidebar.svelte`**: dropped the `mapPin` icon and the "Sector Map" suffix; new `sectorIcon` prop renders the 48px sector icon; title 30px bold; question 24px bold; description 20px weight 400; added a top-right `header-toggle` (reuses `accordion-open.svg`, `class:open` rotates 45° → ×) that collapses/expands the question + description (`introCollapsed` `$state`). Header `border-bottom` removed (the first group's black top border is the divider).
+- **Wiring**: `store.js` `sectorDefaults.*.icon` from `sectors.js`; `maps/[id]/+page.svelte` passes `sectorIcon`.
+- **Cleanup**: deleted the now-unused `src/lib/assets/icons/icon/map-pin.png` (and the empty `icon/` dir).
+- **Verified**: prettier clean, `npm run build` clean, `/maps/natural-treasures` + `/resources` 200. Client-rendered — check in browser.
+
+## 2026-09-30 (legend alias) — use web-map fieldConfiguration alias
+
+- **Report**: on `/maps/natural-treasures`, the River Access layer's legend heading showed `display_category` (the column name).
+- **Root cause**: the unique-value renderer's `field1` is `display_category`; the *service* field alias is also `display_category` (useless). The web map stores a better alias in `layerDefinition.fieldConfigurations` — `display_category` → **"River Access Type"** — which the app wasn't reading.
+- **Fix** (`fetchSublayerMetadata.js` `fetchLayerVisualFieldAlias`): prefer `layer.getFieldAlias(fieldName)` (which returns the web-map fieldConfiguration alias, falling back to the field alias) before the raw field name.
+- **Verified**: prettier clean; web-map JSON + service REST inspected to confirm the alias. No per-layer "legend title" exists in the web map — the fieldConfiguration alias is the intended source.
+
+## 2026-09-30 (legend line preview fix) — Esri preview SVG had no viewBox
+
+- **Report**: the Hiking Trails legend symbol on `/maps/natural-treasures` rendered as a dot.
+- **Check**: it *is* a line layer — service `trails_county_name_added` has `geometryType: esriGeometryPolyline`; renderer is `simple` in both service and web map. The web map overrides the symbol to `esriSLS` / `style: esriSLSShortDot` / `color [88,140,2]` (`#588c02`) / width 1.5. So it's a **dotted line**, not a dot, and not dashed.
+- **Root cause (app bug, affects all layers)**: `symbolUtils.renderPreviewHTML(symbol, {size:16})` returns an SVG with `width`/`height` but **no `viewBox`** (line preview is 50×22, marker 22×22). The sidebar CSS `.legend-symbol svg { width:1.2rem; height:1.2rem }` resizes the viewport without a viewBox, so the content doesn't scale — the 50×22 line gets cropped to its leftmost dot. Verified headlessly (chrome `--dump-dom`) against a temp route.
+- **Fix** (`extractMapPanelData.js`): new `withSvgViewBox(element)` derives `viewBox="0 0 <w> <h>"` from the intrinsic size when absent (skips if already present). Applied to `symbolToHtml` and the `rampItem` previews (color/relationship/pie ramps). Marker previews are unaffected (22×22 → identity viewBox).
+- **Verified**: headless dump shows `viewBox="0 0 50 22"` for the dot line and `0 0 22 22` for the marker; temp route removed; prettier clean.
+
+## 2026-09-30 (hide simple-renderer legends)
+
+- **Ask**: if a layer uses a *simple* renderer (no categories/gradation), hide its legend — a lone unlabeled swatch looks ugly.
+- **Fix** (`extractMapPanelData.js`): new `isSimpleRendererLayer(layer)` (`renderer.type === 'simple'`). Skipped in the LegendViewModel loop, in the missing-layers fallback loop, and `legendFromRenderer` now returns `[]` for simple renderers (removed the single-symbol item). Categorical/gradation legends (`unique-value`, `class-breaks`, `heatmap`) still render.
+- **Supersedes** the earlier "show simple-renderer legends (`items.length > 0`)" decision — e.g. the lone Trucking Companies swatch is now hidden.
+- **Verified**: prettier clean.
+
+## 2026-09-30 (sidebar detail typography) — match Figma sizes
+
+- **Figma** `4187:113813` sidebar (group "Biodiversity & Habitat" open). Measured: group intro/detail = `18px` / lh `25px` / 400 (Montserrat); layer description = `16px` / lh `1.35` / 400; legend labels `16px`.
+- **`SectorSidebar.svelte`**: `.group-summary` + `.group-description` 0.85/0.82rem → **1.125rem (18px)** / lh 1.4 / black; group-detail padding `0.5rem 1rem 0.75rem`. `.layer-description` 0.82rem → **1rem (16px)** / lh 1.35 / black.
+- **Verified**: prettier clean. Client-rendered — check in browser.
+
+## 2026-09-30 (chart title as HTML)
+
+- **Ask**: render the chart title as an HTML element above `<arcgis-chart>` (read from the chart config), and hide the in-chart copy. Confirmed the user wants a *visible* HTML title, not sr-only.
+- **Finding**: Hiking Trails chart (`1a0a1fa3578-layer-95`) has `title.content.text = "Miles of trails by county"` but `title.visible = false`; the visible caption is `footer.visible = true` with the **same text**. So hiding only the title would leave the footer duplicating it.
+- **Fix** (`LayerChart.svelte`): reads `config.title.content.text` into reactive `chartTitle`; renders `<p class="chart-title">` above the chart; passes a shallow-cloned model with `title.visible = false` and, when the footer text equals the title text, `footer.visible = false` (avoids the duplicate; empty/different footers are left alone). Title styled `1.125rem/600`.
+- **Verified**: autofixer + prettier + `npm run build` clean. Chart render itself needs WebGL2 (can't verify headlessly) — check in browser.
+
+## 2026-09-30 (custom popups) — Figma `4191:115989`
+
+- **Ask**: custom map popup; bg = sector header colour. Arcade question: kept Esri's engine so Arcade + field formats still apply.
+- **Decision**: custom Svelte shell (design control) + Esri's `Feature` widget for content (Arcade/format). NT layers rely on Arcade heavily (Stream health 13 `expressionInfos`, Protected Lands 2, etc.), so a raw-attributes popup was ruled out.
+- **Figma**: `4191:115989` is just the shape rect — 304×118, rounded 12px, down tail, fill `#bec77a` (NT button shade). Per the user, bg uses the **sector header colour** (`sector.color`) instead.
+- **Impl**: `mapStore.js` gains `mapPopup` writable (`{feature, location}`); cleared in `clearMapState`. `ArcGISMap.svelte` takes `accentColor`, sets `view.popupEnabled = false`, and on `view.on('click')` hit-tests, picks the first result whose layer has a popupTemplate, attaches the layer template to the graphic if missing, and sets `mapPopup`. `MapPopup.svelte` (new) positions itself via `view.toScreen(location)` (repositions on `stationary`/`zoom`/`size`/`rotation`, flips below near the top, clamps x), renders the sector-coloured rounded box + CSS tail + bold HTML title + close, and hosts an Esri `Feature` widget (`visibleElements.title=false`) for the formatted content. `maps/[id]/+page.svelte` passes `accentColor={sector?.color ?? '#a9b54d'}`.
+- **Verified**: autofixer + prettier + `npm run build` clean, map route 200. Runtime popup needs WebGL2 (can't verify headlessly) — check a feature click in the browser.
+
+## 2026-09-30 (popup content fit)
+
+- `MapPopup.svelte`: `.popup` is now a flex column with `max-height: 70vh`; `.popup-content` is `flex:1; min-height:0; overflow-y:auto` → long features scroll.
+- Scoped Esri resets: `.popup-content :global(.esri-widget){ background-color: transparent !important; box-shadow:none !important; --esri-widget-padding-x:0; --esri-widget-padding-y:0; padding:0 !important }` and `.popup-content :global(.esri-feature__content-element){ padding:0 }`.
+- **Note (not done)**: `.esri-widget` also sets `font-family: Avenir Next…` and `font-size:14px`, so the content still renders in Avenir at 14px rather than Montserrat/16px — flag if we want to override.
+- Verified: prettier + `npm run build` clean.
+
+## 2026-09-30 (popup: pan, height, font)
+
+- **Pan lag**: the popup only repositioned on `view.stationary`, but during a drag the map is moved by a CSS transform so `view.toScreen` is stale → the popup sat at the old spot and jumped on release. Now watch `view.interacting`: hide the popup while interacting, reposition on release (`class:visible={shown && !interacting}`).
+- **Height**: `.popup` `max-height: 250px` (was 70vh); content scrolls.
+- **Widget reset fix**: the Esri `Feature` widget makes our `.popup-content` element its `.esri-widget` root, so a descendant `:global(.esri-widget)` rule never matched it (hence background stayed `#fff`). Resets now sit on `.popup-content` itself: `background-color: transparent !important`, `padding: 0 !important`, `--esri-widget-padding-x/y: 0`, and `font-family: 'Montserrat'` (also on any nested `.esri-widget`).
+- Verified: prettier + `npm run build` clean.
+
+## 2026-09-30 (popup: white + green stroke)
+
+- Tried the alternative style: `.popup` now `background: #fff` (panel white) with `border: 2px solid var(--popup-color)` (the map/sector accent). Tail switched from a filled CSS-border triangle to a **rotated square** (`::after`, 1rem, `rotate(45deg)`, only the two outward edges stroked) so the green outline stays continuous with the box; the `.below` variant strokes top/left instead.
+- Verified with a standalone headless render (temp HTML, chrome screenshot): box + tail outline connect cleanly, above and below variants. prettier + build clean.
+
+## 2026-09-30 (map pan/zoom constraints)
+
+- Added `src/lib/map/region.js` → `regionExtent` (WGS84 extent of the Thrive region).
+- `ArcGISMap.svelte` MapView now gets `extent: regionExtent` (opens there) and `constraints: { geometry: regionExtent, minScale: 1_000_000, maxScale: 2000, rotationEnabled: false }` (can't pan outside or zoom past, no rotation). `minScale`/`maxScale` are placeholders to tune by eye.
+- The existing `zoomToSecondaryBoundary` still runs (goTo of the boundary layer full extent, clamped to REGION since the boundary extent is slightly larger). If we want to drop that zoom and just use REGION, remove `defaultExtent`/`secondaryBoundaryExtent`.
+- Verified: prettier + `npm run build` clean.
+
+## 2026-09-30 (popup follows pan)
+
+- The popup only moved on `view.stationary` (and the earlier `interacting` hide made it wait for pan-end). Now it tracks the pan 1:1: `view.on('drag', …)` records the pointer at `start` and shifts `pos` by the pointer delta on each `update`, then snaps to the true `view.toScreen` on `end` / `stationary`. Removed the `interacting` state/hide and the `!interacting` class toggle.
+- Verified: autofixer + prettier + build clean. Needs a browser check.
+
+## 2026-09-30 (resource link viewer)
+
+- Cards previously opened `rest_api_url` in a new tab. Added `src/routes/resources/[id]/+page.svelte`: looks the tool up by `page.params.id` (globalid) in `page.data.approvedTools`, renders the site nav (layout) + a full-bleed `<iframe src={rest_api_url}>`. `.viewer { height: calc(100vh - 3.75rem); display:flex }` and the iframe `flex:1` fill all remaining space (nav is 3.75rem, same assumption as `MapPageLayout`).
+- `ResourceCard.svelte`: `d.id = clean(a.globalid)`; the card now links to `/resources/{id}` (no `target="_blank"`).
+- **Caveat**: many `rest_api_url` targets are external (Experience Builder, Dashboards, StoryMaps, Google Drive, PDFs). Some (notably Google Drive) send `X-Frame-Options`/CSP and will refuse to render in an iframe — server-side, not fixable here. Consider an "open in new tab" fallback.
+- Verified: autofixer + prettier + `npm run build` clean.
+
+## 2026-09-30 (viewer fallback link)
+
+- `/resources/[id]`: added a slim bar above the iframe — tool title + "Open in new tab ↗" (`target="_blank" rel="noopener noreferrer"`) for resources that refuse framing. `.viewer` is now a flex column; the iframe `flex:1; min-height:0` still fills the rest.
+- Verified: prettier + build clean.
+
+## 2026-09-30 (viewer: Drive embedding)
+
+- `/resources/[id]`: Google Drive `/file/d/<id>/view` sends `x-frame-options: SAMEORIGIN` so it can't be framed (Drive showed an access error). Added `embedUrl()`: rewrites `drive.google.com/file/d/<id>/…` → `/file/d/<id>/preview` and `docs.google.com/{document|spreadsheets|presentation}/d/<id>/…` → `…/preview`; the iframe uses `embedSrc`, while the "Open in new tab" link keeps the original URL.
+- Verified: curl shows `/view` has `x-frame-options: SAMEORIGIN`, `/preview` does not; prettier + build clean.
+- Caveat: `/preview` only renders if the file is shared publicly. If a file is restricted, it'll still ask for access — that's a sharing setting, not code.
+
+## 2026-10-01 (landing About copy)
+
+- Figma MCP tools were missing from the session again; probed the Dev Mode server directly (`POST http://127.0.0.1:3845/mcp`, initialize → session id → `tools/call` `get_design_context`/`get_screenshot` for `4271:120671`).
+- `routes/+page.svelte` `.about` copy replaced to match: kept "About the Resource Hub" h2, "Find everything you need in one place" (now weight 500) + the 3 bullets; then new "How to use the hub" subhead (24/32 bold), intro line, and a 4-item ordered list. Removed the old hr + "Other information" + `Nam pulvinar…` filler. Added `.about-subhead` (1.5rem/32/700), `.about-body` + `ol` (1.125rem/28), ol padding; removed the dead `hr`/`p:not(.about-lead)` rules.
+- **Not done**: the design's right column is a map image (Rectangle 425, 492px, radius 12, drop shadow); the yellow `.about-placeholder` is still there. Asset lives on the Figma MCP localhost — pull + save to the repo if we want it.
+- Verified: prettier + `npm run build` clean.
+
+## 2026-10-01 (landing About image)
+
+- Answered the /static question: kept to the project convention, `src/lib/assets/`. Pulled the Figma asset (served as `.png` but it's actually a JPEG, 3543×3543, by Sara Eichner) and saved it as `src/lib/assets/about-map.jpg`.
+- `routes/+page.svelte`: replaced the yellow `.about-placeholder` with `<img class="about-image">` (width 100%, height 30.75rem/492px, radius 0.75rem, `object-fit: cover`, `box-shadow: 0 4px 2px rgba(0,0,0,.25)`). About grid now `minmax(0, 35.875rem) 1fr` (574px text col + flexible image col, matching the Figma 574 + 32 gap + flexible). ≤900px collapses to one column, image `18rem`.
+- Verified: prettier + build clean.
+
+## 2026-10-01 (fluid line-heights + About tweaks)
+
+- **Bug**: landing/most text used `line-height` in `px` while `font-size` is in `rem`. Root steps 16→13px below 1600px, so fonts shrank but line-heights didn't → text ran ~25% taller than the design. Converted the remaining 13 `line-height: Npx` values to `rem` (22→1.375, 26→1.625, 28→1.75, 32→2, 48→3) across `+page.svelte`, `ResourceCard.svelte`, `resources/+page.svelte`. **Supersedes** the earlier "line-heights left in px intentionally" note.
+- About: `li` line-height set explicitly to `1.75rem`; `.about` padding `3rem 0 6rem` → `3rem 0`.
+- Verified: prettier + build clean.
+
+## 2026-10-01 (Protected Lands "Related Resource" banner)
+
+- Hard-coded a banner in `SectorSidebar.svelte`, shown only inside the group whose title matches `/protected\s*lands/i` (the Protected Lands group on `/maps/natural-treasures`), at the end of the open group content (full-bleed within the panel).
+- Figma `4219:116201` (via the raw Dev Mode MCP probe — the session had no figma tools): just the banner rect, 508×51, fill `#81749a` (secondary/purple/80). Text node wasn't exposed; matched the screenshot — white bold "Related Resource: " + underlined **Interactive Conservation Index** link (`https://www.thriveregionalpartnership.org/`, new tab) + a white `arrow-right.svg` (black icon recoloured via `filter: brightness(0) invert(1)`).
+- Note: banner uses the Figma purple, which is also the Community Prosperity colour — say if it should be the sector colour instead.
+- Verified: prettier + build clean.
+
+## 2026-10-01 (sidebar tweaks + banner move)
+
+- `.legend-heading`: `font-weight` 600 → **400** (same size as the legend items below, `1rem`).
+- `.group-detail`: removed the bottom border; padding → `0.75rem 1rem`.
+- Moved the Related Resource banner out of the group level into the **Protected Lands layer item** (`{#if layer.visible && /protected\s*lands/i.test(layer.title)}`), so it shows only when that layer is on; `.related-resource` gets `margin: 0 -1rem` to stay full-bleed inside `.layer-item`'s padding.
+- Verified: prettier + build clean.

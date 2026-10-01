@@ -32,8 +32,14 @@
 	:global(html) {
 		/* Root size drives all rem type + spacing. Step it down on smaller
 		   viewports so the 1600px design scales proportionally instead of
-		   looking oversized. Tune these two values to change the ramp. */
+		   looking oversized. Tune these values to change the ramp. */
 		font-size: 16px;
+	}
+
+	@media (max-width: 1600px) {
+		:global(html) {
+			font-size: 13px;
+		}
 	}
 
 	@media (max-width: 1200px) {
@@ -53,6 +59,8 @@
 		margin: 0;
 		padding: 0;
 		font-family: 'Montserrat', sans-serif;
+		/* Baseline weight: text stays 400 unless a component specifies otherwise. */
+		font-weight: 400;
 		-webkit-tap-highlight-color: transparent;
 	}
 
@@ -69,6 +77,6 @@
 
 	:global(h1, h2, h3, h4, h5, h6) {
 		font-family: 'Montserrat', sans-serif;
-		font-weight: 900;
+		font-weight: 400;
 	}
 </style>

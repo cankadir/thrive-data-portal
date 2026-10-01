@@ -243,7 +243,7 @@
 		margin: 0;
 		font-size: 1.25rem;
 		font-weight: 700;
-		line-height: 28px;
+		line-height: 1.75rem;
 	}
 
 	/* Search */
@@ -307,7 +307,7 @@
 		flex-direction: column;
 		gap: 0.75rem;
 		font-size: 1.25rem;
-		line-height: 28px;
+		line-height: 1.75rem;
 	}
 
 	.search-return p {
@@ -375,14 +375,14 @@
 		margin: 0;
 		font-size: clamp(2rem, 4vw, 3rem);
 		font-weight: 700;
-		line-height: 48px;
+		line-height: 3rem;
 	}
 
 	.tagline p {
 		margin: 0;
 		max-width: 53.625rem;
 		font-size: 1.25rem;
-		line-height: 28px;
+		line-height: 1.75rem;
 	}
 
 	/* Footer */

@@ -44,10 +44,13 @@ export async function fetchLayerVisualFieldAlias(layerId, options = {}) {
 		const fieldName = resolveRendererField(renderer);
 		if (!fieldName) return null;
 
+		// `getFieldAlias` prefers the web-map fieldConfiguration alias (a saved
+		// "River Access Type" override) over the service alias, which is often
+		// just the raw column name.
 		const field = (layer.fields ?? []).find(
 			(/** @type {{ name: string }} */ f) => f.name === fieldName
 		);
-		return field?.alias || fieldName || null;
+		return layer.getFieldAlias?.(fieldName) || field?.alias || fieldName;
 	})();
 
 	visualFieldCache.set(cacheKey, request);

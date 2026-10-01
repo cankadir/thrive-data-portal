@@ -248,4 +248,13 @@
 		align-items: center;
 		justify-content: center;
 	}
+
+	/* Shrink the nav labels earlier than the root font-size step. */
+	@media (max-width: 960px) {
+		.nav-item,
+		.sector-toggle,
+		.dropdown-item {
+			font-size: 1rem;
+		}
+	}
 </style>

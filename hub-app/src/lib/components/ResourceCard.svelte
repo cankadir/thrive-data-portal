@@ -1,12 +1,11 @@
 <script>
-	import goToIcon from '$lib/assets/icons/go-to.svg';
-	import hoverArrowIcon from '$lib/assets/icons/arrow-down-right.svg';
+	import arrowIcon from '$lib/assets/icons/arrow-right.svg';
 	import datasetIcon from '$lib/assets/icons/sector/dataset.svg';
 	import { sectorById } from '$lib/sectors';
 
 	let { tool } = $props();
 
-	const NEUTRAL = { color: '#c0c0b9', hover: '#a5a5a5', button: '#d6d6ce', icon: datasetIcon };
+	const NEUTRAL = { color: '#c0c0b9', hover: '#a5a5a5', icon: datasetIcon };
 
 	function clean(value) {
 		if (value === null || value === undefined) return '';
@@ -59,23 +58,21 @@
 		return {
 			color: style.color,
 			hover: style.hover,
-			button: style.button,
 			icon: style.icon,
 			typeLabel: clean(a.tool_type) || 'Resource',
 			title: clean(a.title),
 			description: clean(a.summary) || clean(a.field_9),
 			meta,
-			url: clean(a.rest_api_url)
+			url: clean(a.rest_api_url),
+			id: clean(a.globalid)
 		};
 	});
 </script>
 
 <a
 	class="card"
-	style="--card: {d.color}; --card-hover: {d.hover}; --card-button: {d.button}"
-	href={d.url || undefined}
-	target={d.url ? '_blank' : undefined}
-	rel={d.url ? 'noopener noreferrer' : undefined}
+	style="--card: {d.color}; --card-hover: {d.hover}"
+	href={d.url && d.id ? `/resources/${d.id}` : undefined}
 >
 	<div class="card-head">
 		<img class="card-icon" src={d.icon} alt="" />
@@ -96,8 +93,7 @@
 
 	{#if d.url}
 		<span class="go-btn" aria-hidden="true">
-			<img class="go-arrow go-arrow-rest" src={goToIcon} alt="" />
-			<img class="go-arrow go-arrow-hover" src={hoverArrowIcon} alt="" />
+			<img class="go-arrow" src={arrowIcon} alt="" />
 		</span>
 	{/if}
 </a>
@@ -152,68 +148,47 @@
 		margin: 0 0 0.5rem;
 		font-size: 1.5rem;
 		font-weight: 700;
-		line-height: 26px;
+		line-height: 1.625rem;
 	}
 
 	.card-desc {
 		margin: 0 0 0.5rem;
 		font-size: 1rem;
-		line-height: 22px;
+		line-height: 1.375rem;
 	}
 
 	.card-meta {
 		margin: 0;
 		font-size: 1rem;
-		line-height: 22px;
+		line-height: 1.375rem;
 	}
 
 	.meta-label {
-		font-weight: 600;
+		font-weight: 700;
 	}
 
 	.go-btn {
 		position: absolute;
 		right: 0.875rem;
 		bottom: 1rem;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 3.125rem;
-		height: 1.9375rem;
-		background: var(--card-button);
+		width: 2rem;
+		height: 2rem;
 		border: 1px solid #000;
-		border-radius: 0.625rem;
+		border-radius: 0.5rem;
 	}
 
 	.go-arrow {
 		position: absolute;
 		top: 50%;
 		left: 50%;
-		transition:
-			opacity var(--anim-duration) var(--anim-ease),
-			transform var(--anim-duration) var(--anim-ease);
-	}
-
-	.go-arrow-rest {
-		width: 2.171875rem;
-		height: 1.25rem;
-		transform: translate(-50%, -50%);
-	}
-
-	.go-arrow-hover {
 		width: 1.25rem;
 		height: 1.25rem;
-		opacity: 0;
 		transform: translate(-50%, -50%) rotate(0deg);
+		transition: transform var(--anim-duration) var(--anim-ease);
 	}
 
-	.card:hover .go-arrow-rest {
-		opacity: 0;
-	}
-
-	.card:hover .go-arrow-hover {
-		opacity: 1;
-		transform: translate(-50%, -50%) rotate(-90deg);
+	.card:hover .go-arrow {
+		transform: translate(-50%, -50%) rotate(-45deg);
 	}
 
 	@media (prefers-reduced-motion: reduce) {

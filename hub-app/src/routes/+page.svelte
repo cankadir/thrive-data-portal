@@ -2,6 +2,7 @@
 	import { maps } from '$lib/store';
 	import { sectors } from '$lib/sectors';
 	import thriveLogo from '$lib/assets/thrive-logo.svg';
+	import aboutMap from '$lib/assets/about-map.jpg';
 	import goToIcon from '$lib/assets/icons/go-to.svg';
 	import hoverArrowIcon from '$lib/assets/icons/arrow-down-right.svg';
 </script>
@@ -41,16 +42,17 @@
 					<p class="step-head">② See the work that's happening across the region</p>
 					<a class="card" href="/regional-activity">
 						<h2>Regional Activity Map</h2>
-						<hr />
-						<p>See what, where + how work is getting done across the region.</p>
-						<p>
-							Participate:<br />
-							add your projects to the map: <span class="link">www.link.com</span>
-						</p>
-						<span class="go-btn card-cta">
-							<img class="go-arrow go-arrow-rest" src={goToIcon} alt="" />
-							<img class="go-arrow go-arrow-hover" src={hoverArrowIcon} alt="" />
-						</span>
+						<div class="card-body">
+							<p>See what, where + how work is getting done across the region.</p>
+							<p>
+								Participate:<br />
+								add your projects to the map: <span class="link">www.link.com</span>
+							</p>
+							<span class="go-btn card-cta">
+								<img class="go-arrow go-arrow-rest" src={goToIcon} alt="" />
+								<img class="go-arrow go-arrow-hover" src={hoverArrowIcon} alt="" />
+							</span>
+						</div>
 					</a>
 				</div>
 
@@ -58,15 +60,16 @@
 					<p class="step-head">③ Go deep into data and more analysis</p>
 					<a class="card" href="/resources">
 						<h2>Resource library</h2>
-						<hr />
-						<p>
-							Find interactive maps and apps, tools, storymaps and more that provide deep dives into
-							the topics data and analysis
-						</p>
-						<span class="go-btn card-cta">
-							<img class="go-arrow go-arrow-rest" src={goToIcon} alt="" />
-							<img class="go-arrow go-arrow-hover" src={hoverArrowIcon} alt="" />
-						</span>
+						<div class="card-body">
+							<p>
+								Find interactive maps and apps, tools, storymaps and more that provide deep dives
+								into the topics data and analysis
+							</p>
+							<span class="go-btn card-cta">
+								<img class="go-arrow go-arrow-rest" src={goToIcon} alt="" />
+								<img class="go-arrow go-arrow-hover" src={hoverArrowIcon} alt="" />
+							</span>
+						</div>
 					</a>
 				</div>
 			</div>
@@ -87,17 +90,23 @@
 					<li>transparent, see our methods and sources</li>
 				</ul>
 
-				<hr />
-
-				<p class="about-lead">Other information</p>
-				<p>
-					Nam pulvinar blandit velit, id condimentum diam faucibus at. Aliquam lacus nisi,
-					sollicitudin at nisi nec, fermentum congue felis. Quisque mauris dolor, fringilla sed
-					tincidunt ac, finibus non odio.
-				</p>
+				<p class="about-subhead">How to use the hub</p>
+				<p class="about-body">The region is considered at 3 different extents,</p>
+				<ol>
+					<li>The 16 core counties of the Thrive region</li>
+					<li>
+						The watershed boundaries are used to define areas of environmental and ecological
+						concern
+					</li>
+					<li>the greater Thrive region includes the counties adjacent to the core area</li>
+					<li>
+						Find topic sections in the sidebar navigation in each section. Opening those will make
+						it possible to turn data layers on and off.
+					</li>
+				</ol>
 			</div>
 
-			<div class="about-placeholder"></div>
+			<img class="about-image" src={aboutMap} alt="Map of the Thrive region" />
 		</div>
 	</section>
 
@@ -132,7 +141,7 @@
 
 	/* Hero */
 	.hero {
-		padding: 12.5rem 0 4rem;
+		padding: 10.5rem 0 4rem;
 	}
 
 	.hero h1 {
@@ -168,7 +177,7 @@
 		margin: 0 0 0.5rem;
 		font-size: 1.375rem;
 		font-weight: 700;
-		line-height: 26px;
+		line-height: 1.625rem;
 		color: #444;
 	}
 
@@ -180,18 +189,22 @@
 		min-width: 0;
 	}
 
-	.sector-head {
+	.sector-head,
+	.card h2 {
 		display: flex;
 		align-items: center;
 		margin: 0;
 		padding: 0.25rem 0.75rem;
 		min-height: 3.5rem;
+		font-size: 1.25rem;
+		font-weight: 700;
+		line-height: 1.375rem;
+	}
+
+	.sector-head {
 		background: #ffc425;
 		border: 1px solid #000;
 		border-radius: 1rem 1rem 0 0;
-		font-size: 1.25rem;
-		font-weight: 700;
-		line-height: 22px;
 	}
 
 	.sector-row {
@@ -228,17 +241,15 @@
 		min-width: 0;
 		font-size: 1.25rem;
 		font-weight: 700;
-		line-height: 22px;
+		line-height: 1.375rem;
 	}
 
 	/* Yellow cards */
 	.card {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
 		flex: 1;
 		min-width: 0;
-		padding: 0.875rem 1rem 1rem;
 		background: #ffc425;
 		border: 1px solid #000;
 		border-radius: 1rem;
@@ -247,25 +258,31 @@
 	}
 
 	.card h2 {
-		margin: 0.5rem 0 0;
-		font-size: 1.375rem;
-		font-weight: 700;
-		line-height: 32px;
+		position: relative;
 	}
 
-	.card hr {
-		margin: 0;
-		width: 19.625rem;
-		max-width: 100%;
-		border: none;
-		border-top: 1px solid #000;
+	.card h2::after {
+		content: '';
+		position: absolute;
+		right: 1rem;
+		bottom: 0;
+		left: 1rem;
+		border-bottom: 1px solid #000;
+	}
+
+	.card-body {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		flex: 1;
+		padding: 1rem 0.75rem;
 	}
 
 	.card p {
 		margin: 0;
 		font-size: 1.25rem;
 		font-weight: 400;
-		line-height: 26px;
+		line-height: 1.625rem;
 	}
 
 	.link {
@@ -335,7 +352,7 @@
 		margin: 1.5rem 0 0;
 		font-size: 1.375rem;
 		font-weight: 700;
-		line-height: 26px;
+		line-height: 1.625rem;
 		color: #444;
 	}
 
@@ -344,12 +361,12 @@
 		background: #ffc425;
 		border-top: 1px solid #000;
 		border-bottom: 1px solid #000;
-		padding: 3rem 0 6rem;
+		padding: 3rem 0;
 	}
 
 	.about-grid {
 		display: grid;
-		grid-template-columns: 1fr 22.5rem;
+		grid-template-columns: minmax(0, 35.875rem) 1fr;
 		gap: 2rem;
 		align-items: start;
 	}
@@ -358,40 +375,51 @@
 		margin: 0 0 2rem;
 		font-size: 2.25rem;
 		font-weight: 700;
-		line-height: 48px;
+		line-height: 3rem;
 	}
 
 	.about-lead {
 		margin: 0 0 0.5rem;
 		font-size: 1.375rem;
-		font-weight: 600;
-		line-height: 28px;
+		font-weight: 500;
+		line-height: 1.75rem;
 	}
 
 	.about-text ul {
 		margin: 0;
 		padding-left: 1.2em;
 		font-size: 1.25rem;
-		line-height: 28px;
+		line-height: 1.75rem;
 	}
 
-	.about-text hr {
-		margin: 1.5rem 0 1rem;
-		border: none;
-		border-top: 1px solid #000;
+	.about-subhead {
+		margin: 1.5rem 0 0.25rem;
+		font-size: 1.5rem;
+		font-weight: 700;
+		line-height: 2rem;
 	}
 
-	.about-text p:not(.about-lead) {
+	.about-body,
+	.about-text ol {
 		margin: 0;
-		font-size: 1.25rem;
-		line-height: 28px;
+		font-size: 1.125rem;
+		line-height: 1.75rem;
 	}
 
-	.about-placeholder {
-		height: 22.4375rem;
-		border-radius: 1rem;
-		background: #ffd051;
-		box-shadow: 8px 8px 4px 0 rgba(0, 0, 0, 0.25);
+	.about-text ol {
+		padding-left: 1.2em;
+	}
+
+	.about-text li {
+		line-height: 1.75rem;
+	}
+
+	.about-image {
+		width: 100%;
+		height: 30.75rem;
+		border-radius: 0.75rem;
+		object-fit: cover;
+		box-shadow: 0 4px 2px 0 rgba(0, 0, 0, 0.25);
 	}
 
 	/* Tagline */
@@ -412,7 +440,7 @@
 		margin: 0 0 0 auto;
 		max-width: 53.625rem;
 		font-size: 1.25rem;
-		line-height: 28px;
+		line-height: 1.75rem;
 	}
 
 	/* Footer */
@@ -436,13 +464,18 @@
 			padding: 4rem 0 2.5rem;
 		}
 
-		.steps-grid,
 		.about-grid {
 			grid-template-columns: 1fr;
 		}
 
-		.about-placeholder {
-			height: 12.5rem;
+		.about-image {
+			height: 18rem;
+		}
+	}
+
+	@media (max-width: 700px) {
+		.steps-grid {
+			grid-template-columns: 1fr;
 		}
 	}
 </style>

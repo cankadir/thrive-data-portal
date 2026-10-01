@@ -28,6 +28,16 @@ function chartCountOf(layer) {
 		: 0;
 }
 
+/**
+ * A simple renderer draws every feature the same way — one symbol, no
+ * categories or gradation. A single unlabeled swatch is not worth showing, so
+ * those layers get no legend.
+ * @param {unknown} layer
+ */
+function isSimpleRendererLayer(layer) {
+	return /** @type {any} */ (layer)?.renderer?.type === 'simple';
+}
+
 /** Fast layer-only extraction, no legend */
 export async function extractLayers(view) {
 	if (!view?.map) return [];
@@ -92,6 +102,8 @@ async function extractLegend(legendVM, view) {
 
 	for (const info of flattenTree(legendVM.activeLayerInfos)) {
 		try {
+			if (isSimpleRendererLayer(info.layer)) continue;
+
 			const layerId = info.layer?.id ?? null;
 			let items = await legendFromElements(toArray(info.legendElements));
 
@@ -113,7 +125,7 @@ async function extractLegend(legendVM, view) {
 
 		try {
 			const arcLayer = view.map.findLayerById(layer.id);
-			if (!arcLayer) continue;
+			if (!arcLayer || isSimpleRendererLayer(arcLayer)) continue;
 			const items = await legendFromRenderer(arcLayer);
 			if (items.length > 0) {
 				legend.push({ layerId: layer.id, items });
@@ -137,17 +149,9 @@ async function legendFromRenderer(layer) {
 	}
 
 	const renderer = layer?.renderer;
-	if (!renderer) return [];
+	if (!renderer || renderer.type === 'simple') return [];
 
 	const items = [];
-
-	if (renderer.type === 'simple' && renderer.symbol) {
-		items.push({
-			label: renderer.label ?? layer.title ?? '',
-			type: 'symbol',
-			previewHtml: await symbolToHtml(renderer.symbol)
-		});
-	}
 
 	for (const info of toArray(
 		renderer.type === 'unique-value'
@@ -205,11 +209,11 @@ async function rampItem(element) {
 		let preview = null;
 
 		if (element.type === 'color-ramp') {
-			preview = symbolUtils.renderColorRampPreviewHTML(element);
+			preview = withSvgViewBox(symbolUtils.renderColorRampPreviewHTML(element));
 		} else if (element.type === 'relationship-ramp') {
-			preview = await symbolUtils.renderRelationshipRampPreviewHTML(element);
+			preview = withSvgViewBox(await symbolUtils.renderRelationshipRampPreviewHTML(element));
 		} else if (element.type === 'pie-chart-ramp') {
-			preview = symbolUtils.renderPieChartPreviewHTML(element);
+			preview = withSvgViewBox(symbolUtils.renderPieChartPreviewHTML(element));
 		}
 
 		return { label, type, previewHtml: preview?.outerHTML ?? null };
@@ -218,10 +222,27 @@ async function rampItem(element) {
 	}
 }
 
+/**
+ * Esri's preview SVGs carry width/height but no `viewBox`, so the fixed-size
+ * legend CSS can't scale them: wide line previews (e.g. a 50×22 dotted line)
+ * get cropped to a single dot. Derive a viewBox from the intrinsic size so the
+ * preview scales into the 1.2rem box instead.
+ * @param {any} element
+ */
+function withSvgViewBox(element) {
+	const svg = element?.tagName?.toLowerCase() === 'svg' ? element : element?.querySelector?.('svg');
+	if (svg && !svg.getAttribute('viewBox')) {
+		const width = parseFloat(svg.getAttribute('width'));
+		const height = parseFloat(svg.getAttribute('height'));
+		if (width > 0 && height > 0) svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+	}
+	return element;
+}
+
 /** @param {unknown} symbol */
 async function symbolToHtml(symbol) {
 	try {
-		const element = await symbolUtils.renderPreviewHTML(symbol, { size: 16 });
+		const element = withSvgViewBox(await symbolUtils.renderPreviewHTML(symbol, { size: 16 }));
 		return element?.outerHTML ?? null;
 	} catch {
 		return null;

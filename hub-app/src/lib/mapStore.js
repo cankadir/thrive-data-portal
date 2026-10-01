@@ -12,11 +12,15 @@ export const mapLegend = writable([]);
 /** True while the active map is loading layer/legend data */
 export const mapLoading = writable(false);
 
+/** Selected feature for the custom popup: `{ feature, location }` or null */
+export const mapPopup = writable(null);
+
 export function clearMapState() {
 	mapView.set(null);
 	mapLayers.set([]);
 	mapLegend.set([]);
 	mapLoading.set(false);
+	mapPopup.set(null);
 }
 
 /** @param {string} layerId @param {boolean} visible */
