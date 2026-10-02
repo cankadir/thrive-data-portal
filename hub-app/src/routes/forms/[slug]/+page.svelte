@@ -1,17 +1,17 @@
 <script>
 	let { data } = $props();
 
-	const columns = $derived(
-		data.columns.map((name) => ({ name, label: name.replaceAll('_', ' ') }))
-	);
+	const columns = $derived(data.columns);
 
 	const template = $derived(
 		['minmax(13.75rem, 2fr)', ...columns.map(() => 'minmax(0, 1fr)'), 'auto'].join(' ')
 	);
 
-	function statusFor(value) {
-		if (value === null || value === undefined || value === '') return data.emptyStatus;
-		return data.statusStyles[value] ?? null;
+	function statusFor(columnName, value) {
+		const config = data.statusConfig[columnName];
+		if (!config) return null;
+		if (value === null || value === undefined || value === '') return config.empty;
+		return config.styles[value] ?? null;
 	}
 </script>
 
@@ -62,18 +62,14 @@
 							<code>{row.globalId}</code>
 						</span>
 						{#each row.values as value, index (columns[index].name)}
-							{#if columns[index].name === data.statusField}
-								{@const status = statusFor(value)}
-								<span class="value">
-									{#if status}
-										<span class="tag {status.tone}">{status.label}</span>
-									{:else}
-										{value}
-									{/if}
-								</span>
-							{:else}
-								<span class="value">{value}</span>
-							{/if}
+							{@const status = statusFor(columns[index].name, value)}
+							<span class="value">
+								{#if status}
+									<span class="tag {status.tone}">{status.label}</span>
+								{:else}
+									{value}
+								{/if}
+							</span>
 						{/each}
 						<span class="arrow" aria-hidden="true">&rarr;</span>
 					</a>

@@ -20,7 +20,18 @@ export async function load({ params, fetch }) {
 	}
 
 	const pageSize = layer.maxRecordCount ?? 1000;
-	const outFields = [form.globalIdField, form.labelField, ...(form.columns ?? [])].join(',');
+	const columns = form.columns ?? [];
+	const outFields = [
+		...new Set(
+			[
+				form.globalIdField,
+				form.labelField,
+				...columns.flatMap((column) =>
+					typeof column === 'string' ? [column] : (column.sources ?? [])
+				)
+			].filter(Boolean)
+		)
+	].join(',');
 
 	const rows = [];
 	let offset = 0;
@@ -52,7 +63,14 @@ export async function load({ params, fetch }) {
 			rows.push({
 				globalId,
 				label: attrs[form.labelField] || 'Untitled record',
-				values: (form.columns ?? []).map((column) => attrs[column] ?? ''),
+				values: columns.map((column) => {
+					if (typeof column === 'object') {
+						return column.value ? column.value(attrs) : (attrs[column.name] ?? '');
+					}
+					return column === form.statusField && form.statusValue
+						? form.statusValue(attrs)
+						: (attrs[column] ?? '');
+				}),
 				editUrl: surveyEditUrl(form, globalId),
 				photosUrl: form.attachments ? `/forms/${params.slug}/photos/${globalId}` : null
 			});
@@ -62,13 +80,28 @@ export async function load({ params, fetch }) {
 		offset += pageSize;
 	}
 
+	const statusConfig = {};
+	for (const column of columns) {
+		if (typeof column === 'object' && column.styles) {
+			statusConfig[column.name] = { styles: column.styles, empty: column.empty ?? null };
+		}
+	}
+	if (form.statusField) {
+		statusConfig[form.statusField] = {
+			styles: form.statusStyles ?? {},
+			empty: form.emptyStatus ?? null
+		};
+	}
+
 	return {
 		title: form.title,
 		description: form.description ?? '',
-		columns: form.columns ?? [],
-		statusField: form.statusField ?? null,
-		statusStyles: form.statusStyles ?? {},
-		emptyStatus: form.emptyStatus ?? null,
+		columns: columns.map((column) =>
+			typeof column === 'object'
+				? { name: column.name, label: column.label ?? column.name.replaceAll('_', ' ') }
+				: { name: column, label: form.columnLabels?.[column] ?? column.replaceAll('_', ' ') }
+		),
+		statusConfig,
 		hasAttachments: Boolean(form.attachments),
 		rows
 	};
