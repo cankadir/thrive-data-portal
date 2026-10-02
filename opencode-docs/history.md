@@ -462,3 +462,61 @@
 - `.group-detail`: removed the bottom border; padding → `0.75rem 1rem`.
 - Moved the Related Resource banner out of the group level into the **Protected Lands layer item** (`{#if layer.visible && /protected\s*lands/i.test(layer.title)}`), so it shows only when that layer is on; `.related-resource` gets `margin: 0 -1rem` to stay full-bleed inside `.layer-item`'s padding.
 - Verified: prettier + build clean.
+
+## 2026-10-01 (zoom revert + popup fixes)
+
+- **Zoom**: reverted my extra `view.goTo({ zoom: view.zoom - 1 })`; `zoomToSecondaryBoundary` again just `goTo`s the boundary/full extent. `constraints.minScale` set to **2500000** (user's value). Also removed a stray `console.log` in that function.
+- **Popup (layer off)**: `SectorSidebar.toggleLayer` now clears `mapPopup` when the layer being turned off owns the open popup (`popup.feature.layer.id === layerId`). Added `get` + `mapPopup` imports.
+- **Popup (title-only bug)**: `MapPopup` now creates the Esri `Feature` widget **once per view** and reuses it — on open it sets `widget.graphic`, on close `widget.graphic = null; widget.visible = false`. Previously it destroyed/recreated the widget per popup, which left the second popup's content blank.
+- **Bookmarks**: NT web map item `aba702c5420e4a36ac645f14a00ba8f1` has **0 bookmarks** in its data (no "home"), so nothing to read yet; `initialState.viewpoint.scale` is 577790. If a bookmark is saved I can read `bookmarks[].name` + `viewpoint`.
+- Verified: autofixer (MapPopup) + prettier + build clean.
+
+## 2026-10-01 (click-to-centre popups)
+
+- `ArcGISMap` click handler: on a feature hit, after setting `mapPopup`, calls `view.goTo({ center: event.mapPoint })` — pans (no zoom change) so the clicked point, and thus the popup tail, sits at the view centre.
+- `MapPopup` reposition watch now also includes `view.center.x/y`, so the popup tracks the goTo pan animation (previously it only repositioned on `stationary`, i.e. after the pan).
+- Verified: prettier + build clean.
+
+## 2026-10-01 (pre-deploy cleanup — safe batch)
+
+Applied the verified-safe review cleanups (no behaviour/style change):
+- Deleted unused duplicate `static/map.jpg` (same md5 as `src/lib/assets/about-map.jpg`).
+- `extractMapPanelData.js`: dead `title: title || layer.id` → `title` (title already falls back to `layer.id`).
+- `resources/+page.svelte` + `resources/[id]/+page.svelte`: dropped redundant `page.data.approvedTools ?? []` (layout always returns an array).
+- `forms/[slug]/photos/[globalId]/+page.svelte`: `bitmap.close?.()` → `bitmap.close()` (2×).
+- `MapPopup.svelte`: `shellEl`/`contentEl` `$state` → plain `let` (only read in callbacks).
+- `HeaderNav.svelte`: compute `isMapPage` once, derive `sectorId` from it.
+- Verified: prettier + `npm run build` clean (no Svelte warnings). User is separately reviewing the larger "worth doing" items.
+
+## 2026-10-01 (worth-doing review, round 1)
+
+- **SectorSidebar**: replaced the three manual `store.subscribe` mirrors with `const layers = $derived($mapLayers)`, `legend = $derived($mapLegend)`, `isLoading = $derived($mapLoading)`; the side-effect `$effect` now only iterates `layers` (keeps the non-reactive `inFlight` Set guard and the once-only `autoOpenedFirstGroup` flag, so no write→read loop). `toggleLayer` now `mapLayers.update(...)` instead of assigning the (now constant) derived.
+- **store.js**: `sectorDefaults` rebuilt from `sectorCopy` (question/description only) + `sectorById` via `Object.fromEntries`, adding `name: label`. Removes the 4× repeated `sectorById[...]` lookups and the duplicated name.
+- **ArcGISMap**: left the `updatePanel` duplication as-is — the initial load has a `cancelled` guard between `extractPanel` and the store sets that `updatePanel` can't express without a param; not worth the churn.
+- Verified: prettier + build clean, no Svelte/LSP errors.
+
+## 2026-10-01 (metadata: drop copyright + by-title fallback)
+
+- `fetchSublayerMetadata.js`: `fetchLayerMetadata` now returns only `{ summary, description }`. Removed all `copyright` handling and the stale-URL **by-title** fallback (service catalog cache, `fetchMetadataByTitle`, `getServiceCatalog`, `normalizeLayerTitle`, `titlesMatchLoosely`, `getServiceRoot`). `fetchSublayerRest` → `fetchRestDescription` (returns the description string only). Description resolution kept simple: REST `description` by candidate URL → `sourceJSON.description` → portal item description → `layer.description`; empty stays empty.
+- `SectorSidebar.svelte`: removed the `.layer-copyright` markup + CSS.
+- `LegendAccordion.svelte`: removed the Copyright row/state (dormant component, still updated for correctness).
+- Kept the portal **snippet** as `summary` (feeds `.layer-summary` / `.group-summary`) — user said "description really"; flagged as open to also dropping summary.
+- Verified: no `copyright` refs left, prettier + build clean.
+
+## 2026-10-01 (metadata: layers = description only, groups keep summary)
+
+- `fetchSublayerMetadata.js`: kept `{ summary, description }` (portal snippet + description); no copyright, no by-title fallback. `summary` is the portal snippet that **group** accordions rely on.
+- `SectorSidebar.svelte`: layer detail now renders **only** `.layer-description` (`{:else if layerMetadata[layer.id]?.description}`) — dropped `.layer-summary` markup + CSS. Group detail unchanged: `.group-summary` (snippet) + `.group-description`.
+- Missing metadata is safe everywhere: reads are optional-chained / guarded; `fetchLayerMetadata` always resolves to an object (`{summary:null, description:null}` when no layer).
+- Verified: prettier + build clean.
+
+## 2026-10-01 (favicon)
+
+- Used the user's provided mark — it was already in the repo at `src/lib/assets/icons/ThriveRP_icon_orange_small-01.png` (267×267 RGBA). Renamed it to **`src/lib/assets/favicon.png`** and pointed `+layout.svelte` at it (`import favicon from '$lib/assets/favicon.png'`).
+- Removed the old Svelte-logo `favicon.svg` (and a temporary logo-derived SVG I'd generated).
+- Verified: prettier + build clean.
+
+## 2026-10-01 (hide "mask" layer from sidebar)
+
+- The NT web map has a layer titled `mask` inside the **Land Use** group (not in the hidden reference groups), so it showed in the panel. Added `HIDDEN_LAYER_TITLES = new Set(['mask'])` in `extractMapPanelData.js`; `isHiddenGroup` → `isHidden` now checks group + layer title sets, applied in both `flattenOperationalItems` and `walkMapLayers`. The layer stays on the map, just not listed.
+- Verified: prettier + build clean.

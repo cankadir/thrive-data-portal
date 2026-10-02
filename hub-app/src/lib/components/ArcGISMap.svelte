@@ -57,6 +57,7 @@
 				(l) => l.id === 'thrive_secondary_boundary' || l.title === 'thrive_secondary_boundary'
 			);
 
+			let target = fallbackExtent;
 			if (layer) {
 				try {
 					await layer.load();
@@ -64,15 +65,10 @@
 					/* fall through to the fallback extent */
 				}
 				if (cancelled) return;
-				if (layer.fullExtent) {
-					view.goTo(layer.fullExtent);
-					return;
-				}
-			} else {
-				console.log( "Second boundary layer is not here" )
+				if (layer.fullExtent) target = layer.fullExtent;
 			}
 
-			if (fallbackExtent) view.goTo(fallbackExtent);
+			if (target) view.goTo(target);
 		}
 
 		clearMapState();
@@ -120,6 +116,9 @@
 							graphic.popupTemplate = graphic.layer.popupTemplate;
 						}
 						mapPopup.set({ feature: graphic, location: event.mapPoint });
+						// Pan (not zoom) so the feature — and its popup — lands at the
+						// centre of the view.
+						view.goTo({ center: event.mapPoint });
 					} catch (error) {
 						console.error('Popup hit test failed:', error);
 					}

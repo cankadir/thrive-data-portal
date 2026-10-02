@@ -1,7 +1,8 @@
 <script>
 	import { slide } from 'svelte/transition';
 	import { SvelteSet } from 'svelte/reactivity';
-	import { mapLayers, mapLegend, mapLoading, setMapLayerVisibility } from '$lib/mapStore';
+	import { get } from 'svelte/store';
+	import { mapLayers, mapLegend, mapLoading, mapPopup, setMapLayerVisibility } from '$lib/mapStore';
 	import { fetchLayerMetadata, fetchLayerVisualFieldAlias } from '$lib/map/fetchSublayerMetadata';
 	import LayerChart from '$lib/components/LayerChart.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
@@ -27,9 +28,9 @@
 	// create a reactive dependency — otherwise setting loadingMeta triggers the
 	// effect again and it loops forever.
 	const inFlight = new Set();
-	let layers = $state([]);
-	let legend = $state([]);
-	let isLoading = $state(true);
+	const layers = $derived($mapLayers);
+	const legend = $derived($mapLegend);
+	const isLoading = $derived($mapLoading);
 	let openGroups = new SvelteSet();
 	// Plain flag (not $state) so auto-opening the first group happens once.
 	let autoOpenedFirstGroup = false;
@@ -55,31 +56,21 @@
 	}
 
 	$effect(() => {
-		const u1 = mapLayers.subscribe((v) => {
-			layers = v;
-			for (const l of v) {
-				if (l.visible && l.depth > 0) {
-					loadLayerInfo(l);
-				}
+		for (const l of layers) {
+			if (l.visible && l.depth > 0) {
+				loadLayerInfo(l);
 			}
+		}
 
-			// Open the first accordion once the groups are available.
-			if (!autoOpenedFirstGroup) {
-				const first = buildGroups(v)[0];
-				if (first) {
-					autoOpenedFirstGroup = true;
-					openGroups.add(first.group.id);
-					loadLayerInfo(first.group, true);
-				}
+		// Open the first accordion once the groups are available.
+		if (!autoOpenedFirstGroup) {
+			const first = buildGroups(layers)[0];
+			if (first) {
+				autoOpenedFirstGroup = true;
+				openGroups.add(first.group.id);
+				loadLayerInfo(first.group, true);
 			}
-		});
-		const u2 = mapLegend.subscribe((v) => (legend = v));
-		const u3 = mapLoading.subscribe((v) => (isLoading = v));
-		return () => {
-			u1();
-			u2();
-			u3();
-		};
+		}
 	});
 
 	const groups = $derived(buildGroups(layers));
@@ -123,11 +114,15 @@
 
 	function toggleLayer(layerId, visible) {
 		setMapLayerVisibility(layerId, visible);
-		layers = layers.map((l) => (l.id === layerId ? { ...l, visible } : l));
+		mapLayers.update((list) => list.map((l) => (l.id === layerId ? { ...l, visible } : l)));
 
 		if (visible) {
-			const layer = layers.find((l) => l.id === layerId);
+			const layer = get(mapLayers).find((l) => l.id === layerId);
 			if (layer) loadLayerInfo(layer);
+		} else {
+			// Turning a layer off should also dismiss its open popup.
+			const popup = get(mapPopup);
+			if (popup?.feature?.layer?.id === layerId) mapPopup.set(null);
 		}
 	}
 
@@ -232,17 +227,8 @@
 
 											{#if loadingMeta[layer.id]}
 												<p class="meta-loading">Loading…</p>
-											{:else}
-												{#if layerMetadata[layer.id]?.summary}
-													<p class="layer-summary">{layerMetadata[layer.id].summary}</p>
-												{/if}
-												{#if layerMetadata[layer.id]?.description}
-													<p class="layer-description">{layerMetadata[layer.id].description}</p>
-												{/if}
-											{/if}
-
-											{#if layerMetadata[layer.id]?.copyright}
-												<p class="layer-copyright">{layerMetadata[layer.id].copyright}</p>
+											{:else if layerMetadata[layer.id]?.description}
+												<p class="layer-description">{layerMetadata[layer.id].description}</p>
 											{/if}
 										</div>
 									{/if}
@@ -564,14 +550,6 @@
 		line-height: 1.35;
 	}
 
-	.layer-summary {
-		margin: 0 0 0.3rem;
-		font-size: 1rem;
-		font-weight: 400;
-		color: #222;
-		line-height: 1.5;
-	}
-
 	.legend-heading {
 		margin: 0.25rem 0 0.15rem;
 		font-size: 1rem;
@@ -601,12 +579,5 @@
 		max-width: 3.6rem;
 		object-fit: contain;
 		display: block;
-	}
-
-	.layer-copyright {
-		margin: 0;
-		font-size: 0.72rem;
-		color: #888;
-		font-style: italic;
 	}
 </style>

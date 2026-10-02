@@ -1,14 +1,11 @@
-// This file is used to fetch the layer metadata for the map layers
-// Sublayer information was wrong f missing, this file ensures the metadata is recieved from the layer itself and the service catalog
+// Layer metadata for the map panel: the portal item snippet (summary — groups
+// rely on it) and the layer description. Missing values are simply null.
 
 import { get } from 'svelte/store';
 import { mapView } from '$lib/mapStore';
 
-/** @type {Map<string, Promise<{ summary: string | null, description: string | null, copyright: string | null }>>} */
+/** @type {Map<string, Promise<{ summary: string | null, description: string | null }>>} */
 const cache = new Map();
-
-/** @type {Map<string, Promise<{ id: number, name: string }[]>>} */
-const serviceCatalogCache = new Map();
 
 /** @type {Map<string, Promise<string | null>>} */
 const visualFieldCache = new Map();
@@ -29,9 +26,7 @@ export async function fetchLayerVisualFieldAlias(layerId, options = {}) {
 	}
 
 	const request = (async () => {
-		const view = get(mapView);
-		const layer = view?.map?.findLayerById(layerId);
-
+		const layer = get(mapView)?.map?.findLayerById(layerId);
 		if (!layer) return null;
 
 		try {
@@ -40,8 +35,7 @@ export async function fetchLayerVisualFieldAlias(layerId, options = {}) {
 			console.warn('[Layer metadata] Failed to load layer:', layerId, error);
 		}
 
-		const renderer = layer.renderer;
-		const fieldName = resolveRendererField(renderer);
+		const fieldName = resolveRendererField(layer.renderer);
 		if (!fieldName) return null;
 
 		// `getFieldAlias` prefers the web-map fieldConfiguration alias (a saved
@@ -81,14 +75,12 @@ function resolveRendererField(renderer) {
 }
 
 /**
- * Fetch layer-specific description + copyright using the live ArcGIS layer.
+ * Portal summary (snippet) + layer description.
  * @param {string} layerId
  * @param {{ layerUrl?: string | null }} [options]
  */
 export async function fetchLayerMetadata(layerId, options = {}) {
-	if (!layerId) {
-		return { summary: null, description: null, copyright: null };
-	}
+	if (!layerId) return { summary: null, description: null };
 
 	const cacheKey = `${layerId}:${options.layerUrl ?? ''}`;
 	if (cache.has(cacheKey)) {
@@ -96,12 +88,10 @@ export async function fetchLayerMetadata(layerId, options = {}) {
 	}
 
 	const request = (async () => {
-		const view = get(mapView);
-		const layer = view?.map?.findLayerById(layerId);
-
+		const layer = get(mapView)?.map?.findLayerById(layerId);
 		if (!layer) {
 			console.warn('[Layer metadata] Layer not found:', layerId);
-			return { summary: null, description: null, copyright: null };
+			return { summary: null, description: null };
 		}
 
 		try {
@@ -110,59 +100,9 @@ export async function fetchLayerMetadata(layerId, options = {}) {
 			console.warn('[Layer metadata] Failed to load layer:', layerId, error);
 		}
 
-		const summary = await fetchPortalSummary(layer);
-
-		const candidateUrls = collectMetadataUrls(layer, options.layerUrl);
-
-		for (const metadataUrl of candidateUrls) {
-			const restMetadata = await fetchSublayerRest(metadataUrl);
-			if (restMetadata) {
-				return { ...restMetadata, summary };
-			}
-		}
-
-		// Stale web-map URLs (e.g. /162 when service only has /152) — match by title
-		const serviceUrl = getServiceRoot(candidateUrls[0] ?? layer.url ?? options.layerUrl);
-		if (serviceUrl && layer.title) {
-			const resolved = await fetchMetadataByTitle(serviceUrl, layer.title);
-			if (resolved) {
-				return { ...resolved, summary };
-			}
-		}
-
-		const sourceDescription = layer.sourceJSON?.description?.trim();
-		const sourceCopyright = layer.sourceJSON?.copyrightText?.trim();
-
-		if (sourceDescription || sourceCopyright) {
-			return {
-				summary,
-				description: sourceDescription || null,
-				copyright: sourceCopyright || null
-			};
-		}
-
-		// Skip parent Feature Service portal copy — it is shared across all sublayers
-		if (layer.portalItem && !isSharedFeatureServiceLayer(layer)) {
-			try {
-				await layer.portalItem.load();
-				const description = layer.portalItem.description?.trim() || null;
-
-				if (description) {
-					return {
-						summary,
-						description,
-						copyright: layer.copyright?.trim() || null
-					};
-				}
-			} catch (error) {
-				console.warn('[Layer metadata] Portal item fetch failed:', layerId, error);
-			}
-		}
-
 		return {
-			summary,
-			description: layer.description?.trim() || null,
-			copyright: layer.copyright?.trim() || null
+			summary: await fetchPortalSummary(layer),
+			description: await fetchDescription(layer, options.layerUrl)
 		};
 	})();
 
@@ -171,7 +111,37 @@ export async function fetchLayerMetadata(layerId, options = {}) {
 }
 
 /**
- * Portal item "snippet" — the layer summary shown in the panel.
+ * First available description: REST layer `description` (by candidate URL),
+ * then `sourceJSON.description`, then the portal item description, then the
+ * layer's own `description`.
+ * @param {import('@arcgis/core/layers/Layer').default} layer
+ * @param {string | null | undefined} storedUrl
+ */
+async function fetchDescription(layer, storedUrl) {
+	for (const url of collectMetadataUrls(layer, storedUrl)) {
+		const description = await fetchRestDescription(url);
+		if (description) return description;
+	}
+
+	const fromSource = layer.sourceJSON?.description?.trim();
+	if (fromSource) return fromSource;
+
+	// Skip parent Feature Service portal copy — it is shared across all sublayers
+	if (layer.portalItem && !isSharedFeatureServiceLayer(layer)) {
+		try {
+			await layer.portalItem.load();
+			const fromPortal = layer.portalItem.description?.trim();
+			if (fromPortal) return fromPortal;
+		} catch (error) {
+			console.warn('[Layer metadata] Portal item fetch failed:', error);
+		}
+	}
+
+	return layer.description?.trim() || null;
+}
+
+/**
+ * Portal item "snippet" — used as the group summary in the panel.
  * @param {import('@arcgis/core/layers/Layer').default} layer
  * @returns {Promise<string | null>}
  */
@@ -220,98 +190,18 @@ function resolveMetadataUrl(url, layer) {
 	return base;
 }
 
-/** @param {string | null | undefined} url */
-function getServiceRoot(url) {
-	const base = url?.replace(/\/+$/, '').replace(/\?.*$/, '');
-	if (!base) return null;
-
-	const match = base.match(/^(.*\/(?:FeatureServer|MapServer))(?:\/\d+)?$/i);
-	return match?.[1] ?? null;
-}
-
-/** @param {string} metadataUrl */
-async function fetchSublayerRest(metadataUrl) {
+/** @param {string} metadataUrl @returns {Promise<string | null>} */
+async function fetchRestDescription(metadataUrl) {
 	try {
 		const response = await fetch(`${metadataUrl}?f=json`);
 		if (!response.ok) return null;
 
 		const data = await response.json();
-		if (data.error) return null;
-
-		const description = data.description?.trim() || null;
-		const copyright = data.copyrightText?.trim() || null;
-
-		if (description || copyright) {
-			return { description, copyright };
-		}
+		return data.description?.trim() || null;
 	} catch (error) {
 		console.warn('[Layer metadata] REST fetch failed:', metadataUrl, error);
+		return null;
 	}
-
-	return null;
-}
-
-/** @param {string} serviceUrl @param {string} title */
-async function fetchMetadataByTitle(serviceUrl, title) {
-	const catalog = await getServiceCatalog(serviceUrl);
-	if (!catalog.length) return null;
-
-	const normalized = normalizeLayerTitle(title);
-	const match =
-		catalog.find((entry) => normalizeLayerTitle(entry.name) === normalized) ??
-		catalog.find((entry) => titlesMatchLoosely(normalized, normalizeLayerTitle(entry.name)));
-
-	if (!match) return null;
-
-	return fetchSublayerRest(`${serviceUrl}/${match.id}`);
-}
-
-/** @param {string} serviceUrl */
-async function getServiceCatalog(serviceUrl) {
-	if (serviceCatalogCache.has(serviceUrl)) {
-		return serviceCatalogCache.get(serviceUrl);
-	}
-
-	const request = (async () => {
-		try {
-			const response = await fetch(`${serviceUrl}?f=json`);
-			if (!response.ok) return [];
-
-			const data = await response.json();
-			if (data.error || !Array.isArray(data.layers)) return [];
-
-			return data.layers.map((/** @type {{ id: number, name: string }} */ layer) => ({
-				id: layer.id,
-				name: layer.name
-			}));
-		} catch (error) {
-			console.warn('[Layer metadata] Service catalog fetch failed:', serviceUrl, error);
-			return [];
-		}
-	})();
-
-	serviceCatalogCache.set(serviceUrl, request);
-	return request;
-}
-
-/** @param {string} title */
-function normalizeLayerTitle(title) {
-	return title
-		.toLowerCase()
-		.replace(/[^\w\s]/g, ' ')
-		.replace(/\s+/g, ' ')
-		.trim();
-}
-
-/** @param {string} a @param {string} b */
-function titlesMatchLoosely(a, b) {
-	if (a.includes(b) || b.includes(a)) return true;
-
-	const stripYear = (/** @type {string} */ value) => value.replace(/\bfy?\s*\d{4}\b/g, '').trim();
-	const aCore = stripYear(a);
-	const bCore = stripYear(b);
-
-	return aCore.length > 8 && bCore.length > 8 && (aCore.includes(bCore) || bCore.includes(aCore));
 }
 
 /** @param {import('@arcgis/core/layers/Layer').default} layer */
@@ -322,6 +212,5 @@ function isSharedFeatureServiceLayer(layer) {
 
 export function clearSublayerMetadataCache() {
 	cache.clear();
-	serviceCatalogCache.clear();
 	visualFieldCache.clear();
 }

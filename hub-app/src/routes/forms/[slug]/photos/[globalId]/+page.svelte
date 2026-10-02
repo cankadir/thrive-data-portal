@@ -108,7 +108,7 @@
 	async function resizeImage(file, max = 1280) {
 		const bitmap = await createImageBitmap(file);
 		if (bitmap.width <= max && bitmap.height <= max) {
-			bitmap.close?.();
+			bitmap.close();
 			return file;
 		}
 		const scale = max / Math.max(bitmap.width, bitmap.height);
@@ -116,7 +116,7 @@
 		canvas.width = Math.round(bitmap.width * scale);
 		canvas.height = Math.round(bitmap.height * scale);
 		canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-		bitmap.close?.();
+		bitmap.close();
 		const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
 		if (!blob) return file;
 		return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });

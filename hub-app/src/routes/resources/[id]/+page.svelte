@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 
 	const tool = $derived(
-		(page.data.approvedTools ?? []).find((t) => t.attributes.globalid === page.params.id)
+		page.data.approvedTools.find((t) => t.attributes.globalid === page.params.id)
 	);
 	const title = $derived(tool?.attributes?.title?.trim() ?? 'Resource');
 	const url = $derived(tool?.attributes?.rest_api_url?.trim() ?? '');

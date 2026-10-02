@@ -6,7 +6,6 @@
 	let metadataLoading = $state(false);
 	let metadataLoaded = $state(false);
 	let description = $state(null);
-	let copyright = $state(null);
 
 	const hasLegendItems = $derived(items.length > 0);
 	const hasContent = $derived(hasLegendItems || !!layerId);
@@ -16,12 +15,10 @@
 
 		metadataLoading = true;
 		description = null;
-		copyright = null;
 
 		try {
 			const data = await fetchLayerMetadata(layerId, { layerUrl });
 			description = data.description;
-			copyright = data.copyright;
 			metadataLoaded = true;
 		} finally {
 			metadataLoading = false;
@@ -48,16 +45,6 @@
 							{@html description}
 						{:else}
 							None
-						{/if}
-					</dd>
-				</div>
-				<div class="meta-row">
-					<dt>Copyright</dt>
-					<dd>
-						{#if metadataLoading}
-							<span class="loading">Loading layer info…</span>
-						{:else}
-							{copyright || 'None'}
 						{/if}
 					</dd>
 				</div>

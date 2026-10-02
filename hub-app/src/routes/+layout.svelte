@@ -1,5 +1,5 @@
 <script>
-	import favicon from '$lib/assets/favicon.svg';
+	import favicon from '$lib/assets/favicon.png';
 	import HeaderNav from '$lib/components/HeaderNav.svelte';
 
 	let { children } = $props();

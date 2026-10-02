@@ -9,8 +9,8 @@
 	let title = $state('');
 	let shown = $state(false);
 	let pos = $state({ x: 0, y: 0, below: false });
-	let shellEl = $state(null);
-	let contentEl = $state(null);
+	let shellEl = null;
+	let contentEl = null;
 
 	function close() {
 		mapPopup.set(null);
@@ -70,14 +70,9 @@
 		function apply() {
 			if (!view || !contentEl) return;
 
-			if (!current?.feature) {
-				widget?.destroy();
-				widget = null;
-				shown = false;
-				title = '';
-				return;
-			}
-
+			// Create the Feature widget once per view and re-use it. Destroying
+			// and recreating it on each popup left the next popup's content blank
+			// (only the title came through).
 			if (!widget) {
 				// Esri's Feature widget renders the graphic's popupTemplate —
 				// Arcade expressions and field formats included. We hide its own
@@ -98,6 +93,14 @@
 				);
 			}
 
+			if (!current?.feature) {
+				widget.graphic = null;
+				widget.visible = false;
+				shown = false;
+				title = '';
+				return;
+			}
+
 			widget.graphic = current.feature;
 			widget.visible = true;
 			shown = true;
@@ -115,7 +118,16 @@
 			if (view) {
 				handles.push(
 					reactiveUtils.watch(
-						() => [view.stationary, view.zoom, view.size, view.rotation],
+						// Watch `center` too so the popup tracks a programmatic pan
+						// (e.g. the click-to-centre animation).
+						() => [
+							view.stationary,
+							view.zoom,
+							view.size,
+							view.rotation,
+							view.center?.x,
+							view.center?.y
+						],
 						reposition
 					)
 				);

@@ -7,18 +7,20 @@ import identityManager from '@arcgis/core/identity/IdentityManager.js';
 identityManager.dialog = null;
 
 /**
- * Reference-only layer groups kept off the side panel. They stay visible on the
- * map but are not user-editable, so their subtree is skipped during extraction.
+ * Reference-only groups kept off the side panel. They stay visible on the map
+ * but are not user-editable, so their subtree is skipped during extraction.
  */
 const HIDDEN_GROUP_TITLES = new Set(['thrive boundaries and mask layers', 'thrive region masks']);
 
+/** Layers that exist on the map but should not appear as panel entries. */
+const HIDDEN_LAYER_TITLES = new Set(['mask']);
+
 /** @param {unknown} title */
-function isHiddenGroup(title) {
-	return HIDDEN_GROUP_TITLES.has(
-		String(title ?? '')
-			.trim()
-			.toLowerCase()
-	);
+function isHidden(title) {
+	const name = String(title ?? '')
+		.trim()
+		.toLowerCase();
+	return HIDDEN_GROUP_TITLES.has(name) || HIDDEN_LAYER_TITLES.has(name);
 }
 
 /** Number of webmap charts configured on a layer. @param {unknown} layer */
@@ -258,12 +260,12 @@ function flattenOperationalItems(items, depth = 0, ancestorVisible = true) {
 		const title = item.title || layer?.title || layer?.id;
 		const effectiveVisible = Boolean(item.visible && ancestorVisible);
 
-		if (isHiddenGroup(title)) continue;
+		if (isHidden(title)) continue;
 
 		if (layer?.id && layer.loadStatus !== 'failed') {
 			layers.push({
 				id: layer.id,
-				title: title || layer.id,
+				title,
 				visible: effectiveVisible,
 				url: layer.url ?? null,
 				depth,
@@ -289,7 +291,7 @@ function walkMapLayers(layers, depth = 0, ancestorVisible = true) {
 			if (layer.loadStatus === 'failed') continue;
 
 			const title = layer.title || layer.id;
-			if (isHiddenGroup(title)) continue;
+			if (isHidden(title)) continue;
 
 			const effectiveVisible = Boolean(layer.visible && ancestorVisible);
 

@@ -29,7 +29,7 @@
 	let typed = $state('');
 	let focused = $state(false);
 
-	const approvedTools = $derived(page.data.approvedTools ?? []);
+	const approvedTools = $derived(page.data.approvedTools);
 
 	const toolsById = $derived.by(() => {
 		const map = {};

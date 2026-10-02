@@ -5,8 +5,8 @@
 	import { sectorById } from '$lib/sectors';
 
 	const isLanding = $derived(page.route.id === '/');
-	const sectorId = $derived(page.route.id === '/maps/[id]' ? page.params.id : null);
 	const isMapPage = $derived(page.route.id === '/maps/[id]');
+	const sectorId = $derived(isMapPage ? page.params.id : null);
 
 	const sectorOrder = [
 		'responsible-growth',
