@@ -147,3 +147,5 @@ packages/svelte/scripts/_baseline/
 benchmarking/.profiles
 benchmarking/compare/.results
 benchmarking/compare/.profiles
+# Project knowledge base (local only)
+opencode-docs/
