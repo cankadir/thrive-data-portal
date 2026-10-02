@@ -42,7 +42,7 @@
 						{#if metadataLoading}
 							<span class="loading">Loading layer info…</span>
 						{:else if description}
-							{@html description}
+							{description}
 						{:else}
 							None
 						{/if}

@@ -182,14 +182,9 @@
 					</button>
 
 					{#if openGroups.has(group.id)}
-						{#if layerMetadata[group.id]?.summary || layerMetadata[group.id]?.description}
+						{#if layerMetadata[group.id]?.description}
 							<div class="group-detail">
-								{#if layerMetadata[group.id].summary}
-									<p class="group-summary">{layerMetadata[group.id].summary}</p>
-								{/if}
-								{#if layerMetadata[group.id].description}
-									<p class="group-description">{layerMetadata[group.id].description}</p>
-								{/if}
+								<p class="group-description">{layerMetadata[group.id].description}</p>
 							</div>
 						{/if}
 						<div class="layer-list" transition:slide={{ duration: 200 }}>
@@ -227,8 +222,23 @@
 
 											{#if loadingMeta[layer.id]}
 												<p class="meta-loading">Loading…</p>
-											{:else if layerMetadata[layer.id]?.description}
-												<p class="layer-description">{layerMetadata[layer.id].description}</p>
+											{:else}
+												{@const meta = layerMetadata[layer.id]}
+												{#if meta?.description}
+													<p class="layer-description">{meta.description}</p>
+												{/if}
+												{#if meta?.source}
+													<p class="layer-source">
+														Source:
+														{#if meta.source.url}
+															<a href={meta.source.url} target="_blank" rel="noopener noreferrer"
+																>{meta.source.text}</a
+															>
+														{:else}
+															{meta.source.text}
+														{/if}
+													</p>
+												{/if}
 											{/if}
 										</div>
 									{/if}
@@ -241,16 +251,21 @@
 										</div>
 									{/if}
 
-									{#if layer.visible && /protected\s*lands/i.test(layer.title)}
+									{#if layer.visible && layerMetadata[layer.id]?.interHub}
+										{@const interHub = layerMetadata[layer.id].interHub}
 										<div class="related-resource">
 											<p class="related-text">
 												Related Resource:
-												<a
-													class="related-link"
-													href="https://www.thriveregionalpartnership.org/"
-													target="_blank"
-													rel="noopener noreferrer">Interactive Conservation Index</a
-												>
+												{#if interHub.url}
+													<a
+														class="related-link"
+														href={interHub.url}
+														target="_blank"
+														rel="noopener noreferrer">{interHub.name}</a
+													>
+												{:else}
+													{interHub.name}
+												{/if}
 											</p>
 											<img class="related-arrow" src={arrowRight} alt="" aria-hidden="true" />
 										</div>
@@ -410,13 +425,6 @@
 		padding: 0.75rem 1rem;
 	}
 
-	.group-summary {
-		margin: 0;
-		font-size: 1.125rem;
-		line-height: 1.4;
-		color: #000;
-	}
-
 	.group-description {
 		margin: 0.3rem 0 0;
 		font-size: 1.125rem;
@@ -548,6 +556,18 @@
 		font-size: 1rem;
 		color: #000;
 		line-height: 1.35;
+	}
+
+	.layer-source {
+		margin: 0 0 0.4rem;
+		font-size: 0.75rem;
+		line-height: 1.35;
+		color: #545454;
+	}
+
+	.layer-source a {
+		color: inherit;
+		overflow-wrap: anywhere;
 	}
 
 	.legend-heading {

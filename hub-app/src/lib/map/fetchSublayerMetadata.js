@@ -1,10 +1,16 @@
-// Layer metadata for the map panel: the portal item snippet (summary — groups
-// rely on it) and the layer description. Missing values are simply null.
+// Layer content for the map panel. Descriptions and links are read from the
+// CMS_DataDetails layer (see cmsContent.js), which is authoritative for the
+// sector maps — there is no fallback to REST/portal metadata.
 
 import { get } from 'svelte/store';
 import { mapView } from '$lib/mapStore';
+import { matchCmsRow, cmsDescription, cmsLinks, clearCmsCache } from '$lib/map/cmsContent';
 
-/** @type {Map<string, Promise<{ summary: string | null, description: string | null }>>} */
+/** @typedef {{ description: string | null, source: { text: string, url: string | null } | null, interHub: { name: string, url: string | null } | null }} LayerContent */
+
+const EMPTY = { description: null, source: null, interHub: null };
+
+/** @type {Map<string, Promise<LayerContent>>} */
 const cache = new Map();
 
 /** @type {Map<string, Promise<string | null>>} */
@@ -75,12 +81,13 @@ function resolveRendererField(renderer) {
 }
 
 /**
- * Portal summary (snippet) + layer description.
+ * CMS content for a layer: description, source link and inter-hub link.
  * @param {string} layerId
  * @param {{ layerUrl?: string | null }} [options]
+ * @returns {Promise<LayerContent>}
  */
 export async function fetchLayerMetadata(layerId, options = {}) {
-	if (!layerId) return { summary: null, description: null };
+	if (!layerId) return EMPTY;
 
 	const cacheKey = `${layerId}:${options.layerUrl ?? ''}`;
 	if (cache.has(cacheKey)) {
@@ -88,10 +95,11 @@ export async function fetchLayerMetadata(layerId, options = {}) {
 	}
 
 	const request = (async () => {
-		const layer = get(mapView)?.map?.findLayerById(layerId);
-		if (!layer) {
+		const view = get(mapView);
+		const layer = view?.map?.findLayerById(layerId);
+		if (!layer || !view?.map) {
 			console.warn('[Layer metadata] Layer not found:', layerId);
-			return { summary: null, description: null };
+			return EMPTY;
 		}
 
 		try {
@@ -100,117 +108,24 @@ export async function fetchLayerMetadata(layerId, options = {}) {
 			console.warn('[Layer metadata] Failed to load layer:', layerId, error);
 		}
 
-		return {
-			summary: await fetchPortalSummary(layer),
-			description: await fetchDescription(layer, options.layerUrl)
-		};
+		const row = await matchCmsRow(view.map.portalItem?.id, {
+			itemId: layer.portalItem?.id ?? null,
+			url: layer.url ?? options.layerUrl ?? null,
+			title: layer.title
+		});
+
+		if (!row) return EMPTY;
+
+		const { source, interHub } = cmsLinks(row);
+		return { description: cmsDescription(row), source, interHub };
 	})();
 
 	cache.set(cacheKey, request);
 	return request;
 }
 
-/**
- * First available description: REST layer `description` (by candidate URL),
- * then `sourceJSON.description`, then the portal item description, then the
- * layer's own `description`.
- * @param {import('@arcgis/core/layers/Layer').default} layer
- * @param {string | null | undefined} storedUrl
- */
-async function fetchDescription(layer, storedUrl) {
-	for (const url of collectMetadataUrls(layer, storedUrl)) {
-		const description = await fetchRestDescription(url);
-		if (description) return description;
-	}
-
-	const fromSource = layer.sourceJSON?.description?.trim();
-	if (fromSource) return fromSource;
-
-	// Skip parent Feature Service portal copy — it is shared across all sublayers
-	if (layer.portalItem && !isSharedFeatureServiceLayer(layer)) {
-		try {
-			await layer.portalItem.load();
-			const fromPortal = layer.portalItem.description?.trim();
-			if (fromPortal) return fromPortal;
-		} catch (error) {
-			console.warn('[Layer metadata] Portal item fetch failed:', error);
-		}
-	}
-
-	return layer.description?.trim() || null;
-}
-
-/**
- * Portal item "snippet" — used as the group summary in the panel.
- * @param {import('@arcgis/core/layers/Layer').default} layer
- * @returns {Promise<string | null>}
- */
-async function fetchPortalSummary(layer) {
-	if (!layer?.portalItem) return null;
-
-	try {
-		await layer.portalItem.load();
-		return layer.portalItem.snippet?.trim() || null;
-	} catch (error) {
-		console.warn('[Layer metadata] Portal summary fetch failed:', error);
-		return null;
-	}
-}
-
-/** @param {import('@arcgis/core/layers/Layer').default} layer @param {string | null | undefined} storedUrl */
-function collectMetadataUrls(layer, storedUrl) {
-	/** @type {string[]} */
-	const urls = [];
-
-	for (const raw of [layer.url, storedUrl, layer.portalItem?.url]) {
-		const resolved = resolveMetadataUrl(raw, layer);
-		if (resolved && !urls.includes(resolved)) {
-			urls.push(resolved);
-		}
-	}
-
-	return urls;
-}
-
-/** @param {string | null | undefined} url @param {import('@arcgis/core/layers/Layer').default} layer */
-function resolveMetadataUrl(url, layer) {
-	const base = url?.replace(/\/+$/, '').replace(/\?.*$/, '');
-	if (!base) return null;
-
-	if (/\/(FeatureServer|MapServer)\/\d+$/i.test(base)) {
-		return base;
-	}
-
-	const sublayerId = layer.layerId ?? layer.sourceJSON?.id;
-
-	if (/\/(FeatureServer|MapServer)$/i.test(base) && sublayerId != null) {
-		return `${base}/${sublayerId}`;
-	}
-
-	return base;
-}
-
-/** @param {string} metadataUrl @returns {Promise<string | null>} */
-async function fetchRestDescription(metadataUrl) {
-	try {
-		const response = await fetch(`${metadataUrl}?f=json`);
-		if (!response.ok) return null;
-
-		const data = await response.json();
-		return data.description?.trim() || null;
-	} catch (error) {
-		console.warn('[Layer metadata] REST fetch failed:', metadataUrl, error);
-		return null;
-	}
-}
-
-/** @param {import('@arcgis/core/layers/Layer').default} layer */
-function isSharedFeatureServiceLayer(layer) {
-	const url = layer.url ?? layer.portalItem?.url ?? '';
-	return /\/(FeatureServer|MapServer)(?:\/\d+)?$/i.test(url);
-}
-
 export function clearSublayerMetadataCache() {
 	cache.clear();
 	visualFieldCache.clear();
+	clearCmsCache();
 }
