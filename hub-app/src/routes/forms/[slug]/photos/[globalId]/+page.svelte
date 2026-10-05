@@ -19,6 +19,7 @@
 
 	let pending = $state({});
 	let removed = $state([]);
+	let credits = $state(data.photoCredits ?? '');
 	let submitting = $state(false);
 	let progress = $state(0);
 	let message = $state(null);
@@ -38,11 +39,23 @@
 		return VIDEO_EXT.includes(ext);
 	}
 
-	const changes = $derived(Object.keys(pending).length + removed.length);
+	const creditsDirty = $derived(data.creditsField ? credits !== (data.photoCredits ?? '') : false);
+	const changes = $derived(Object.keys(pending).length + removed.length + (creditsDirty ? 1 : 0));
 	const dirty = $derived(changes > 0);
 
-	function filesFor(keyword) {
-		return data.attachments.filter((a) => a.keywords === keyword);
+	/**
+	 * Portal uploads use a prefixed keyword that Survey123 does not recognise as
+	 * a question. Survey123 only deletes "survey-related" attachments (keyword
+	 * matches an attachment question) on edit, so these survive.
+	 */
+	function portalKeyword(slot) {
+		return `portal_${slot.keyword}`;
+	}
+
+	/** A slot lists both its portal-keyword files and any legacy question-keyword ones. */
+	function filesFor(slot) {
+		const keys = [slot.keyword, portalKeyword(slot)];
+		return data.attachments.filter((a) => keys.includes(a.keywords));
 	}
 
 	function isRemoved(id) {
@@ -132,11 +145,27 @@
 	async function addAttachment(slot, file) {
 		const payload = slot.kind === 'image' ? await resizeImage(file) : file;
 		const fd = new FormData();
-		fd.append('keywords', slot.keyword);
+		fd.append('keywords', portalKeyword(slot));
 		fd.append('attachment', payload, payload.name);
 		const json = await post(`${data.attachUrl}/addAttachment`, fd);
 		if (json.error) throw new Error(json.error.message ?? 'Upload failed');
 		if (!json.addAttachmentResult?.success) throw new Error('Upload rejected by the server');
+	}
+
+	async function updateCredits(value) {
+		const fd = new FormData();
+		fd.append(
+			'features',
+			JSON.stringify([
+				{ attributes: { [data.objectIdField]: data.objectId, [data.creditsField]: value } }
+			])
+		);
+		const json = await post(`${data.layerUrl}/updateFeatures`, fd);
+		if (json.error) throw new Error(json.error.message ?? 'Could not save photo credits');
+		const result = json.updateResults?.[0];
+		if (result && !result.success) {
+			throw new Error(result.error?.message ?? 'Photo credits update was rejected');
+		}
 	}
 
 	async function submit() {
@@ -144,14 +173,15 @@
 		for (const slot of data.slots) {
 			const chosen = pending[slot.keyword];
 			if (chosen) {
-				for (const a of filesFor(slot.keyword)) ops.push({ type: 'delete', id: a.id });
+				for (const a of filesFor(slot)) ops.push({ type: 'delete', id: a.id });
 				ops.push({ type: 'add', slot, file: chosen.file });
 			} else {
-				for (const a of filesFor(slot.keyword)) {
+				for (const a of filesFor(slot)) {
 					if (isRemoved(a.id)) ops.push({ type: 'delete', id: a.id });
 				}
 			}
 		}
+		if (creditsDirty) ops.push({ type: 'credits', value: credits });
 		if (ops.length === 0) return;
 
 		submitting = true;
@@ -161,7 +191,8 @@
 			let step = 0;
 			for (const op of ops) {
 				if (op.type === 'delete') await deleteAttachment(op.id);
-				else await addAttachment(op.slot, op.file);
+				else if (op.type === 'add') await addAttachment(op.slot, op.file);
+				else await updateCredits(op.value);
 				step += 1;
 				progress = Math.round((step / ops.length) * 100);
 			}
@@ -210,7 +241,7 @@
 	{:else}
 		<div class="slots">
 			{#each data.slots as slot (slot.keyword)}
-				{@const existing = filesFor(slot.keyword)}
+				{@const existing = filesFor(slot)}
 				{@const chosen = pending[slot.keyword]}
 				{@const type = TYPES[slot.kind]}
 				<section class="slot">
@@ -282,6 +313,20 @@
 				</section>
 			{/each}
 		</div>
+
+		{#if data.creditsField}
+			<section class="credits">
+				<label for="photo-credits">Photo credits</label>
+				<span class="hint">Who should be credited for these photos?</span>
+				<textarea
+					id="photo-credits"
+					rows="2"
+					placeholder="e.g. Photograph by Jane Doe"
+					bind:value={credits}
+					disabled={submitting}
+				></textarea>
+			</section>
+		{/if}
 
 		<div class="actions">
 			{#if message}
@@ -355,6 +400,27 @@
 		flex-direction: column;
 		gap: 0.75rem;
 		margin-top: 1.25rem;
+	}
+
+	.credits {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		margin-top: 1.25rem;
+	}
+
+	.credits label {
+		font-size: 1rem;
+		font-weight: 600;
+	}
+
+	.credits textarea {
+		padding: 0.5rem 0.7rem;
+		border: 1px solid #d6d6ce;
+		border-radius: 0.5rem;
+		font: inherit;
+		color: inherit;
+		resize: vertical;
 	}
 
 	.slot {

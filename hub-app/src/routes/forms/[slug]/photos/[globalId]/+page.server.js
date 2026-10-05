@@ -15,9 +15,10 @@ export async function load({ params, fetch }) {
 	}
 
 	const layerUrl = `${form.serviceUrl}/${form.layerId}`;
+	const creditsField = form.attachments.creditsField ?? null;
 	const query = new URLSearchParams({
 		where: `${form.globalIdField}='${params.globalId}'`,
-		outFields: `${form.objectIdField},${form.labelField}`,
+		outFields: [form.objectIdField, form.labelField, creditsField].filter(Boolean).join(','),
 		returnGeometry: 'false',
 		f: 'json'
 	});
@@ -49,6 +50,11 @@ export async function load({ params, fetch }) {
 		title: form.title,
 		label,
 		globalId: params.globalId,
+		layerUrl,
+		objectIdField: form.objectIdField,
+		objectId: oid,
+		creditsField,
+		photoCredits: creditsField ? (feature.attributes[creditsField] ?? '') : null,
 		slots: form.attachments.slots,
 		attachUrl,
 		attachments

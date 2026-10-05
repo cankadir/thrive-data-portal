@@ -32,9 +32,15 @@
  *   emptyStatus     Tag used when a statusField cell is null/empty.
  *   surveyUrl       Survey123 share URL (no query string).
  *   attachments     Optional. Enables the /forms/<slug>/photos/<globalId> page and the
- *                   "Photos" button on each row. Shape: { slots: [{ keyword, label, kind }] }
- *                   where keyword is the Survey123 attachment keyword (e.g. photo_1) and
+ *                   "Photos" button on each row. Shape:
+ *                   { creditsField?, slots: [{ keyword, label, kind }] } — when
+ *                   creditsField is set, the page shows a "Photo credits" box that
+ *                   writes to that feature field.
+ *                   where keyword is the Survey123 question name (e.g. photo_1) and
  *                   kind is 'image' (resized client-side) or 'video' (uploaded as-is).
+ *                   The photo page uploads with a `portal_` prefix on the keyword so
+ *                   Survey123 does not treat the file as survey-related (and so does
+ *                   not delete it on edit); it still lists any legacy photo_1 files.
  */
 /** Friendly labels for the `sector` values used in the Regional Activity Map dataset. */
 const SECTOR_LABELS = {
@@ -125,6 +131,7 @@ export const forms = {
 		emptyStatus: { label: 'Not Reviewed', tone: 'grey' },
 		surveyUrl: 'https://survey123.arcgis.com/share/e7199db2f8354ce7a2eecc55cafa6d5a',
 		attachments: {
+			creditsField: 'photo_credits',
 			slots: [
 				{ keyword: 'photo_1', label: 'Photo 1', kind: 'image' },
 				{ keyword: 'photo_2', label: 'Photo 2', kind: 'image' },
