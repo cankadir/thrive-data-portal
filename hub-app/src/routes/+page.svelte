@@ -18,7 +18,10 @@
 		<div class="wrap">
 			<div class="steps-grid">
 				<div class="step">
-					<p class="step-head">① Understand the state of the region across 4 sectors</p>
+					<p class="step-head">
+						<span class="step-num">1</span>
+						<span>Understand the state of the region across 4 sectors</span>
+					</p>
 					<div class="sector-card">
 						<p class="sector-head">Sector Profile Maps</p>
 						{#each sectors as sector (sector.id)}
@@ -39,7 +42,10 @@
 				</div>
 
 				<div class="step">
-					<p class="step-head">② See the work that's happening across the region</p>
+					<p class="step-head">
+						<span class="step-num">2</span>
+						<span>See the work that's happening across the region</span>
+					</p>
 					<a class="card" href="/regional-activity">
 						<h2>Regional Activity Map</h2>
 						<div class="card-body">
@@ -57,7 +63,10 @@
 				</div>
 
 				<div class="step">
-					<p class="step-head">③ Go deep into data and more analysis</p>
+					<p class="step-head">
+						<span class="step-num">3</span>
+						<span>Go deep into data and more analysis</span>
+					</p>
 					<a class="card" href="/resources">
 						<h2>Resource library</h2>
 						<div class="card-body">
@@ -74,7 +83,9 @@
 				</div>
 			</div>
 
-			<p class="steps-foot">Start here or jump in wherever you want</p>
+			<p class="steps-foot">
+				<a href="/maps/natural-treasures">Start here</a> or jump in wherever you want
+			</p>
 		</div>
 	</section>
 
@@ -173,12 +184,20 @@
 	.step-head {
 		display: flex;
 		align-items: flex-start;
+		gap: 0.8rem;
 		min-height: 4.8125rem;
-		margin: 0 0 0.5rem;
+		margin: 0 0 1rem;
 		font-size: 1.375rem;
 		font-weight: 700;
 		line-height: 1.625rem;
 		color: #444;
+	}
+
+	/* Step number: twice the head size, no line-height box. */
+	.step-num {
+		flex-shrink: 0;
+		font-size: 2em;
+		line-height: 1;
 	}
 
 	/* Sector Profile Maps card */
@@ -354,6 +373,11 @@
 		font-weight: 700;
 		line-height: 1.625rem;
 		color: #444;
+	}
+
+	.steps-foot a {
+		color: inherit;
+		text-decoration: underline;
 	}
 
 	/* About (full-width yellow band) */

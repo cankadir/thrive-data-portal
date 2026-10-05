@@ -28,8 +28,9 @@ const sectorCopy = {
 	'natural-treasures': {
 		question:
 			'How do we protect and leverage the natural assets that define our region and support long-term prosperity?',
+		miniTitle: 'The Natural Environment',
 		description:
-			'Explore conservation priorities, wildlife corridors, stream health, and land cover change across the region.'
+			"The Cradle of Southern Appalachia is one of North America's most biodiverse yet least protected landscapes. This unique geography is at the heart of the region’s character."
 	},
 	'community-prosperity': {
 		description:

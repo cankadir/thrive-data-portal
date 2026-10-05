@@ -4,7 +4,11 @@
 	const columns = $derived(data.columns);
 
 	const template = $derived(
-		['minmax(13.75rem, 2fr)', ...columns.map(() => 'minmax(0, 1fr)'), 'auto'].join(' ')
+		[
+			'minmax(13.75rem, 2fr)',
+			...columns.map((column) => (column.truncate ? 'minmax(0, 1.5fr)' : 'minmax(0, 1fr)')),
+			'1.5rem'
+		].join(' ')
 	);
 
 	function statusFor(columnName, value) {
@@ -63,7 +67,7 @@
 						</span>
 						{#each row.values as value, index (columns[index].name)}
 							{@const status = statusFor(columns[index].name, value)}
-							<span class="value">
+							<span class="value" class:truncate={columns[index].truncate} title={value}>
 								{#if status}
 									<span class="tag {status.tone}">{status.label}</span>
 								{:else}
@@ -120,7 +124,8 @@
 	}
 
 	.row-group.with-action {
-		grid-template-columns: minmax(0, 1fr) auto;
+		/* Fixed so the header and record rows compute the same 1fr track width. */
+		grid-template-columns: minmax(0, 1fr) 7rem;
 	}
 
 	.row {
@@ -132,6 +137,7 @@
 
 	.head-action {
 		align-self: center;
+		justify-self: end;
 		padding-right: 1rem;
 		font-weight: 600;
 		color: #656364;
@@ -139,6 +145,7 @@
 
 	.photos-link {
 		align-self: center;
+		justify-self: end;
 		margin-right: 1rem;
 		padding: 0.4rem 0.9rem;
 		border: 1px solid #3064b2;
@@ -200,6 +207,15 @@
 
 	.value {
 		color: #656364;
+	}
+
+	.value.truncate {
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		overflow: hidden;
+		overflow-wrap: anywhere;
 	}
 
 	.tag {

@@ -9,6 +9,7 @@ const OUT_FIELDS = [
 	'kind',
 	'node_title',
 	'item_id',
+	'sublayer_id',
 	'url',
 	'new_description',
 	'source',
@@ -55,6 +56,11 @@ async function fetchCmsRows(mapId) {
 }
 
 /** @param {object | null | undefined} row */
+export function cmsTitle(row) {
+	return row?.node_title?.trim() || null;
+}
+
+/** @param {object | null | undefined} row */
 export function cmsDescription(row) {
 	return row?.new_description?.trim() || null;
 }
@@ -73,44 +79,37 @@ export function cmsLinks(row) {
 }
 
 /**
- * Find the CMS row for a live map layer: item_id (groups/layers), then
- * normalized URL (sublayers sharing an item_id), then title (plain groups).
+ * Find the CMS row for a live map layer. Layers sharing one portal item (a
+ * multi-layer service — the "Trip Updates", Census, Safety layers) are told
+ * apart by their service sublayer number, not their title.
+ *   1. `item_id` + `sublayer_id` (layers/sublayers of a shared service item),
+ *   2. normalized URL (sublayers whose CMS `url` carries `/FeatureServer/<n>`),
+ *   3. `item_id` alone (group layers, single-layer service items).
+ * Titles never connect a live layer to CMS — the CMS owns the display title.
  * @param {string | null | undefined} mapId
- * @param {{ itemId?: string | null, url?: string | null, title?: string | null }} identity
+ * @param {{ itemId?: string | null, url?: string | null, sublayerId?: number | string | null }} identity
  */
-export async function matchCmsRow(mapId, { itemId, url, title }) {
+export async function matchCmsRow(mapId, { itemId, url, sublayerId }) {
 	const rows = await loadCmsForMap(mapId);
 	if (rows.length === 0) return null;
 
+	if (itemId && sublayerId != null) {
+		const wanted = String(sublayerId);
+		const byLayer = rows.filter(
+			(row) => row.item_id === itemId && String(row.sublayer_id) === wanted
+		);
+		if (byLayer.length > 0) return byLayer[0];
+	}
+
 	const targetUrl = normalizeUrl(url);
-	const targetTitle = normalizeTitle(title);
-
-	/** @param {object[]} list */
-	const narrow = (list) => {
-		if (list.length <= 1) return list;
-
-		if (targetUrl) {
-			const byUrl = list.filter((row) => normalizeUrl(row.url) === targetUrl);
-			if (byUrl.length > 0) list = byUrl;
-		}
-		if (list.length > 1 && targetTitle) {
-			const byTitle = list.filter((row) => normalizeTitle(row.node_title) === targetTitle);
-			if (byTitle.length > 0) list = byTitle;
-		}
-		return list;
-	};
+	if (targetUrl) {
+		const byUrl = rows.filter((row) => normalizeUrl(row.url) === targetUrl);
+		if (byUrl.length > 0) return byUrl[0];
+	}
 
 	if (itemId) {
 		const byItem = rows.filter((row) => row.item_id === itemId);
-		if (byItem.length > 0) return narrow(byItem)[0] ?? null;
-	}
-	if (targetUrl) {
-		const byUrl = rows.filter((row) => normalizeUrl(row.url) === targetUrl);
-		if (byUrl.length > 0) return narrow(byUrl)[0] ?? null;
-	}
-	if (targetTitle) {
-		const byTitle = rows.filter((row) => normalizeTitle(row.node_title) === targetTitle);
-		if (byTitle.length > 0) return narrow(byTitle)[0] ?? null;
+		if (byItem.length > 0) return byItem[0];
 	}
 	return null;
 }
@@ -118,11 +117,6 @@ export async function matchCmsRow(mapId, { itemId, url, title }) {
 /** @param {string | null | undefined} url */
 function normalizeUrl(url) {
 	return url ? url.split('?')[0].replace(/\/+$/, '').toLowerCase() : null;
-}
-
-/** @param {string | null | undefined} title */
-function normalizeTitle(title) {
-	return (title ?? '').trim().toLowerCase();
 }
 
 export function clearCmsCache() {

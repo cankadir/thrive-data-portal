@@ -1,11 +1,5 @@
-<main class="placeholder">
-	<h1>Regional Activity Map</h1>
-	<p>Coming soon.</p>
-</main>
+<script>
+	import ComingSoon from '$lib/components/ComingSoon.svelte';
+</script>
 
-<style>
-	.placeholder {
-		padding: 3rem;
-		text-align: center;
-	}
-</style>
+<ComingSoon title="Regional Activity Map" />

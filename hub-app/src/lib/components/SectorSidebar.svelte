@@ -3,19 +3,21 @@
 	import { SvelteSet } from 'svelte/reactivity';
 	import { get } from 'svelte/store';
 	import { mapLayers, mapLegend, mapLoading, mapPopup, setMapLayerVisibility } from '$lib/mapStore';
-	import { fetchLayerMetadata, fetchLayerVisualFieldAlias } from '$lib/map/fetchSublayerMetadata';
+	import { fetchMapContent, fetchLayerVisualFieldAlias } from '$lib/map/fetchSublayerMetadata';
 	import LayerChart from '$lib/components/LayerChart.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import accordionOpen from '$lib/assets/icons/accordion-open.svg';
 	import arrowRight from '$lib/assets/icons/arrow-right.svg';
 
 	let {
+		mapId = null,
 		sectorName = 'Sector',
 		sectorColor = '#a9b54d',
 		sectorIcon = '',
 		sectorButton = '#bec77a',
 		sectorTint = '#d0d88d',
 		question = '',
+		miniTitle = '',
 		description = 'Rorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam eu turpis molestie, dictum est a, mattis tellus.'
 	} = $props();
 
@@ -23,52 +25,54 @@
 
 	let layerMetadata = $state({});
 	let layerAlias = $state({});
-	let loadingMeta = $state({});
 	// Plain Set (not $state) so reading it inside the mapLayers effect doesn't
-	// create a reactive dependency — otherwise setting loadingMeta triggers the
+	// create a reactive dependency — otherwise setting state triggers the
 	// effect again and it loops forever.
-	const inFlight = new Set();
+	const aliasInFlight = new Set();
 	const layers = $derived($mapLayers);
 	const legend = $derived($mapLegend);
 	const isLoading = $derived($mapLoading);
 	let openGroups = new SvelteSet();
-	// Plain flag (not $state) so auto-opening the first group happens once.
+	// Plain flag (not $state) so it isn't a reactive dependency of the effect.
 	let autoOpenedFirstGroup = false;
 
-	async function loadLayerInfo(layer, force = false) {
-		if ((!layer.visible && !force) || inFlight.has(layer.id)) return;
+	/** CMS content (title/description/links) for every layer and group, one query per map. */
+	async function loadContent(id, list) {
+		const content = await fetchMapContent(id, list);
+		layerMetadata = { ...layerMetadata, ...content };
+	}
 
-		inFlight.add(layer.id);
-		loadingMeta[layer.id] = true;
-
+	/** Legend heading: the alias of the field a visible layer is symbolized by. */
+	async function loadAlias(layer) {
+		if (aliasInFlight.has(layer.id)) return;
+		aliasInFlight.add(layer.id);
 		try {
-			const [meta, alias] = await Promise.all([
-				fetchLayerMetadata(layer.id, { layerUrl: layer.url }),
-				fetchLayerVisualFieldAlias(layer.id, { layerUrl: layer.url })
-			]);
-
-			layerMetadata[layer.id] = meta;
+			const alias = await fetchLayerVisualFieldAlias(layer.id, { layerUrl: layer.url });
 			if (alias) layerAlias[layer.id] = alias;
 		} finally {
-			loadingMeta[layer.id] = false;
-			inFlight.delete(layer.id);
+			aliasInFlight.delete(layer.id);
 		}
 	}
 
 	$effect(() => {
-		for (const l of layers) {
+		const list = layers;
+
+		if (mapId && list.length > 0) {
+			loadContent(mapId, list);
+		}
+
+		for (const l of list) {
 			if (l.visible && l.depth > 0) {
-				loadLayerInfo(l);
+				loadAlias(l);
 			}
 		}
 
 		// Open the first accordion once the groups are available.
 		if (!autoOpenedFirstGroup) {
-			const first = buildGroups(layers)[0];
+			const first = buildGroups(list)[0];
 			if (first) {
 				autoOpenedFirstGroup = true;
 				openGroups.add(first.group.id);
-				loadLayerInfo(first.group, true);
 			}
 		}
 	});
@@ -97,6 +101,11 @@
 		return groups;
 	}
 
+	/** CMS title wins; fall back to the live map title when nothing matches. */
+	function titleOf(entry) {
+		return layerMetadata[entry.id]?.title ?? entry.title;
+	}
+
 	function isCrossSector(title) {
 		return /cross.?sector/i.test(title);
 	}
@@ -106,9 +115,6 @@
 			openGroups.delete(group.id);
 		} else {
 			openGroups.add(group.id);
-			// Group layers can carry a summary (portal item snippet); load it the
-			// first time the accordion is opened. Most groups won't have one.
-			loadLayerInfo(group, true);
 		}
 	}
 
@@ -116,11 +122,8 @@
 		setMapLayerVisibility(layerId, visible);
 		mapLayers.update((list) => list.map((l) => (l.id === layerId ? { ...l, visible } : l)));
 
-		if (visible) {
-			const layer = get(mapLayers).find((l) => l.id === layerId);
-			if (layer) loadLayerInfo(layer);
-		} else {
-			// Turning a layer off should also dismiss its open popup.
+		// Turning a layer off should also dismiss its open popup.
+		if (!visible) {
 			const popup = get(mapPopup);
 			if (popup?.feature?.layer?.id === layerId) mapPopup.set(null);
 		}
@@ -153,7 +156,9 @@
 				{#if question}
 					<p class="sidebar-question">{question}</p>
 				{/if}
-				<p class="sidebar-desc">{description}</p>
+				<p class="sidebar-desc">
+					{#if miniTitle}<strong class="mini-title">{miniTitle}:</strong>{' '}{/if}{description}
+				</p>
 			</div>
 		{/if}
 	</header>
@@ -169,10 +174,10 @@
 					<button
 						class="group-header"
 						class:open={openGroups.has(group.id)}
-						class:cross={isCrossSector(group.title)}
+						class:cross={isCrossSector(titleOf(group))}
 						onclick={() => toggleGroup(group)}
 					>
-						<span class="group-title">{group.title}</span>
+						<span class="group-title">{titleOf(group)}</span>
 						<img
 							class="toggle-icon"
 							class:open={openGroups.has(group.id)}
@@ -199,10 +204,11 @@
 												<span class="radio-dot"></span>
 											{/if}
 										</span>
-										<span class="layer-name" class:active={layer.visible}>{layer.title}</span>
+										<span class="layer-name" class:active={layer.visible}>{titleOf(layer)}</span>
 									</button>
 
 									{#if layer.visible}
+										{@const meta = layerMetadata[layer.id]}
 										<div class="layer-detail" transition:slide={{ duration: 150 }}>
 											{#if (legendFor(layer.id)?.items ?? []).length > 0}
 												{#if layerAlias[layer.id]}
@@ -220,25 +226,20 @@
 												</ul>
 											{/if}
 
-											{#if loadingMeta[layer.id]}
-												<p class="meta-loading">Loading…</p>
-											{:else}
-												{@const meta = layerMetadata[layer.id]}
-												{#if meta?.description}
-													<p class="layer-description">{meta.description}</p>
-												{/if}
-												{#if meta?.source}
-													<p class="layer-source">
-														Source:
-														{#if meta.source.url}
-															<a href={meta.source.url} target="_blank" rel="noopener noreferrer"
-																>{meta.source.text}</a
-															>
-														{:else}
-															{meta.source.text}
-														{/if}
-													</p>
-												{/if}
+											{#if meta?.description}
+												<p class="layer-description">{meta.description}</p>
+											{/if}
+											{#if meta?.source}
+												<p class="layer-source">
+													Source:
+													{#if meta.source.url}
+														<a href={meta.source.url} target="_blank" rel="noopener noreferrer"
+															>{meta.source.text}</a
+														>
+													{:else}
+														{meta.source.text}
+													{/if}
+												</p>
 											{/if}
 										</div>
 									{/if}
@@ -356,6 +357,10 @@
 		color: #000;
 	}
 
+	.mini-title {
+		font-weight: 700;
+	}
+
 	.sidebar-body {
 		flex: 1;
 		overflow-y: auto;
@@ -432,7 +437,7 @@
 		color: #000;
 	}
 
-	/* Hard-coded "Related Resource" banner (Protected Lands layer only). */
+	/* Inter-hub "Related Resource" banner, shown for a visible layer whose CMS row has one. */
 	.related-resource {
 		display: flex;
 		align-items: center;
@@ -542,13 +547,6 @@
 
 	.layer-charts {
 		padding: 0.25rem 0 0.75rem;
-	}
-
-	.meta-loading {
-		margin: 0 0 0.25rem;
-		font-size: 0.8rem;
-		color: #999;
-		font-style: italic;
 	}
 
 	.layer-description {

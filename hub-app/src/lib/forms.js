@@ -14,11 +14,16 @@
  *   labelField      Main field shown as the (clickable) record label.
  *   columns         Fields shown as columns. Each entry is either a field name
  *                   (renders the raw value) or an object for a derived/tag column:
- *                     { name, label, sources?, value?, styles?, empty? }
+ *                     { name, label, sources?, value?, styles?, empty?, geometry? }
  *                   `sources` lists raw fields the value needs (added to outFields);
  *                   `value(attrs)` derives the cell; `styles` maps a raw value to
  *                   { label, tone } (tone: green/red/blue/grey) so it renders as a tag,
- *                   with `empty` for null/empty.
+ *                   with `empty` for null/empty; `geometry: true` renders Yes/No from
+ *                   whether the feature actually has geometry (forces returnGeometry);
+ *                   `attachments: true` renders Yes/No from whether the row has any
+ *                   attachments (resolved in bulk via queryAttachments);
+ *                   `truncate: true` gives the cell a wider grid track and folds its
+ *                   text over up to two lines before showing an ellipsis.
  *   columnLabels    Optional map of column name → header text (for string columns).
  *   statusField     Legacy single-status shortcut: column name + statusValue/statusStyles/
  *                   emptyStatus. Prefer object columns for new forms.
@@ -31,6 +36,30 @@
  *                   where keyword is the Survey123 attachment keyword (e.g. photo_1) and
  *                   kind is 'image' (resized client-side) or 'video' (uploaded as-is).
  */
+/** Friendly labels for the `sector` values used in the Regional Activity Map dataset. */
+const SECTOR_LABELS = {
+	community_prosperity: 'Community Prosperity',
+	responsible_growth: 'Responsible Growth',
+	natural_treasures: 'Natural Treasures',
+	transportation_infrastructure: 'Transportation + Infrastructure',
+	other: 'Other',
+	all: 'All'
+};
+
+/** `"a,b"` or `"Snake_case"` → `"Friendly, Labels"`. Unknown values pass through. */
+function formatSectors(value) {
+	if (!value) return '';
+	return String(value)
+		.split(',')
+		.map((part) => part.trim())
+		.filter(Boolean)
+		.map(
+			(part) =>
+				SECTOR_LABELS[part] ?? SECTOR_LABELS[part.toLowerCase().replace(/\s+/g, '_')] ?? part
+		)
+		.join(', ');
+}
+
 export const forms = {
 	'regional-activity-map': {
 		title: 'Regional Activity Map — Project Editor',
@@ -42,14 +71,58 @@ export const forms = {
 		globalIdField: 'GlobalID_2',
 		objectIdField: 'ObjectId',
 		labelField: 'project_name',
-		columns: ['sector', 'organization', 'review_status'],
+		columns: [
+			{
+				name: 'sector',
+				label: 'Sector',
+				sources: ['sector'],
+				value: (attrs) => formatSectors(attrs.sector),
+				truncate: true
+			},
+			'organization',
+			'review_status',
+			{
+				name: 'has_geometry',
+				label: 'Has geometry',
+				geometry: true,
+				styles: {
+					yes: { label: 'Yes', tone: 'green' },
+					no: { label: 'No', tone: 'red' }
+				}
+			},
+			{
+				name: 'has_attachments',
+				label: 'Attachments',
+				attachments: true,
+				styles: {
+					yes: { label: 'Yes', tone: 'green' },
+					no: { label: 'No', tone: 'red' }
+				}
+			},
+			{
+				name: 'activity_map_project',
+				label: 'Activity map project',
+				sources: ['activity_map_project'],
+				value: (attrs) => {
+					const value = String(attrs.activity_map_project ?? '')
+						.trim()
+						.toUpperCase();
+					return value === 'TRUE' ? 'yes' : value === 'FALSE' ? 'no' : '';
+				},
+				styles: {
+					yes: { label: 'Yes', tone: 'green' },
+					no: { label: 'No', tone: 'red' }
+				}
+			}
+		],
 		statusField: 'review_status',
 		statusStyles: {
 			yes: { label: 'Yes', tone: 'green' },
 			no: { label: 'No', tone: 'red' },
-			in_review: { label: 'In review', tone: 'blue' }
+			in_review: { label: 'In review', tone: 'blue' },
+			needs_review: { label: 'Needs Review', tone: 'grey' }
 		},
-		emptyStatus: { label: 'Needs review', tone: 'grey' },
+		emptyStatus: { label: 'Not Reviewed', tone: 'grey' },
 		surveyUrl: 'https://survey123.arcgis.com/share/e7199db2f8354ce7a2eecc55cafa6d5a',
 		attachments: {
 			slots: [

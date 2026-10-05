@@ -4,11 +4,23 @@
 
 import { get } from 'svelte/store';
 import { mapView } from '$lib/mapStore';
-import { matchCmsRow, cmsDescription, cmsLinks, clearCmsCache } from '$lib/map/cmsContent';
+import {
+	matchCmsRow,
+	cmsTitle,
+	cmsDescription,
+	cmsLinks,
+	clearCmsCache
+} from '$lib/map/cmsContent';
 
-/** @typedef {{ description: string | null, source: { text: string, url: string | null } | null, interHub: { name: string, url: string | null } | null }} LayerContent */
+/** @typedef {{ title: string | null, description: string | null, source: { text: string, url: string | null } | null, interHub: { name: string, url: string | null } | null }} LayerContent */
 
-const EMPTY = { description: null, source: null, interHub: null };
+const EMPTY = { title: null, description: null, source: null, interHub: null };
+
+/** @param {object} row */
+function contentFromRow(row) {
+	const { source, interHub } = cmsLinks(row);
+	return { title: cmsTitle(row), description: cmsDescription(row), source, interHub };
+}
 
 /** @type {Map<string, Promise<LayerContent>>} */
 const cache = new Map();
@@ -109,19 +121,42 @@ export async function fetchLayerMetadata(layerId, options = {}) {
 		}
 
 		const row = await matchCmsRow(view.map.portalItem?.id, {
-			itemId: layer.portalItem?.id ?? null,
+			itemId: layer.portalItem?.id ?? layer.parent?.portalItem?.id ?? null,
 			url: layer.url ?? options.layerUrl ?? null,
-			title: layer.title
+			sublayerId: layer.layerId ?? layer.source?.mapLayerId ?? null
 		});
 
-		if (!row) return EMPTY;
-
-		const { source, interHub } = cmsLinks(row);
-		return { description: cmsDescription(row), source, interHub };
+		return row ? contentFromRow(row) : EMPTY;
 	})();
 
 	cache.set(cacheKey, request);
 	return request;
+}
+
+/**
+ * Batch CMS content for many layers/groups at once: one CMS query per map
+ * (cached in `loadCmsForMap`), matched in memory. No per-layer `layer.load()`.
+ * @param {string | null | undefined} mapId
+ * @param {{ id: string, itemId?: string | null, url?: string | null, sublayerId?: number | string | null }[]} entries
+ * @returns {Promise<Record<string, LayerContent>>}
+ */
+export async function fetchMapContent(mapId, entries) {
+	/** @type {Record<string, LayerContent>} */
+	const result = {};
+	if (!mapId) return result;
+
+	await Promise.all(
+		entries.map(async (entry) => {
+			const row = await matchCmsRow(mapId, {
+				itemId: entry.itemId,
+				url: entry.url,
+				sublayerId: entry.sublayerId
+			});
+			if (row) result[entry.id] = contentFromRow(row);
+		})
+	);
+
+	return result;
 }
 
 export function clearSublayerMetadataCache() {

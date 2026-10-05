@@ -23,6 +23,34 @@ function isHidden(title) {
 	return HIDDEN_GROUP_TITLES.has(name) || HIDDEN_LAYER_TITLES.has(name);
 }
 
+/** @param {any} layer */
+function isSublayer(layer) {
+	return typeof layer?.declaredClass === 'string' && layer.declaredClass.includes('Sublayer');
+}
+
+/**
+ * Portal item id of a layer. A MapImageLayer sublayer has no portal item of its
+ * own, so it inherits its parent service's.
+ * @param {any} layer
+ */
+function itemIdOf(layer) {
+	return (
+		layer?.portalItem?.id ?? (isSublayer(layer) ? (layer?.parent?.portalItem?.id ?? null) : null)
+	);
+}
+
+/**
+ * Service sublayer number. A FeatureLayer carries it as `layerId`; a
+ * MapImageLayer sublayer as `source.mapLayerId`. Layers sharing a portal item
+ * (multi-layer services) are only distinguishable by this.
+ * @param {any} layer
+ */
+function sublayerIdOf(layer) {
+	if (layer?.layerId != null) return layer.layerId;
+	if (isSublayer(layer)) return layer?.source?.mapLayerId ?? layer?.id ?? null;
+	return null;
+}
+
 /** Number of webmap charts configured on a layer. @param {unknown} layer */
 function chartCountOf(layer) {
 	return Array.isArray(/** @type {any} */ (layer)?.charts)
@@ -268,6 +296,8 @@ function flattenOperationalItems(items, depth = 0, ancestorVisible = true) {
 				title,
 				visible: effectiveVisible,
 				url: layer.url ?? null,
+				itemId: itemIdOf(layer),
+				sublayerId: sublayerIdOf(layer),
 				depth,
 				chartCount: chartCountOf(layer)
 			});
@@ -300,6 +330,8 @@ function walkMapLayers(layers, depth = 0, ancestorVisible = true) {
 				title,
 				visible: effectiveVisible,
 				url: layer.url ?? null,
+				itemId: itemIdOf(layer),
+				sublayerId: sublayerIdOf(layer),
 				depth,
 				chartCount: chartCountOf(layer)
 			});
