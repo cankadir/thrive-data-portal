@@ -20,7 +20,12 @@ function isHidden(title) {
 	const name = String(title ?? '')
 		.trim()
 		.toLowerCase();
-	return HIDDEN_GROUP_TITLES.has(name) || HIDDEN_LAYER_TITLES.has(name);
+	return (
+		HIDDEN_GROUP_TITLES.has(name) ||
+		HIDDEN_LAYER_TITLES.has(name) ||
+		// Any `mask_*` layer/group stays on the map but off the panel.
+		name.startsWith('mask_')
+	);
 }
 
 /** @param {any} layer */

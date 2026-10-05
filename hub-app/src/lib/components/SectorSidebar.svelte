@@ -412,6 +412,9 @@
 		font-size: 1.375rem;
 		color: #080808;
 		line-height: 1.27;
+		/* The parent <button> defaults to `text-align: center`; left-align so a
+		   wrapped title's lines line up with the panel edge. */
+		text-align: left;
 	}
 
 	.toggle-icon {
