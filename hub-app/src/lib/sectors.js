@@ -47,3 +47,12 @@ export const sectors = [
 ];
 
 export const sectorById = Object.fromEntries(sectors.map((sector) => [sector.id, sector]));
+
+/** Regional Activity Map is not a sector, but shares the sidebar/popup colour contract. */
+export const regionalActivity = {
+	label: 'Regional Activity Map',
+	color: '#ffc425',
+	hover: '#ffd051',
+	button: '#ffdc7c',
+	tint: '#ffe6a1'
+};

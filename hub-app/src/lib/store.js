@@ -19,9 +19,16 @@ export const maps = {
 	},
 	'regional-activity': {
 		title: 'Regional Activity Map',
-		mapId: '33a22411395544f79554a79af04217a2'
+		mapId: '79e19dd5e63645beb992122c502b69e5'
 	}
 };
+
+/**
+ * Flip to false to serve the "Coming soon" page for the Regional Activity Map
+ * instead of the live map. A `?ram=on|off` query param on `/regional-activity`
+ * overrides this at runtime (handy during a demo).
+ */
+export const regionalActivityMapReady = true;
 
 // Per-sector copy only; colour/icon/button/tint all come from `sectors.js`.
 const sectorCopy = {

@@ -164,6 +164,7 @@ export async function load({ params, fetch }) {
 		),
 		statusConfig,
 		hasAttachments: Boolean(form.attachments),
+		surveyUrl: form.surveyUrl,
 		rows
 	};
 }

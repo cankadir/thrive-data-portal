@@ -6,6 +6,8 @@
 
 	const isLanding = $derived(page.route.id === '/');
 	const isMapPage = $derived(page.route.id === '/maps/[id]');
+	// Pages whose sidebar is the shared panel: the logo column must match its width.
+	const usesPanelLayout = $derived(isMapPage || page.route.id === '/regional-activity');
 	const sectorId = $derived(isMapPage ? page.params.id : null);
 
 	const sectorOrder = [
@@ -24,7 +26,7 @@
 </script>
 
 <nav class="nav">
-	<div class="nav-logo" class:on-map={isMapPage}>
+	<div class="nav-logo" class:on-map={usesPanelLayout}>
 		<a
 			href="https://www.thriveregionalpartnership.org/"
 			target="_blank"

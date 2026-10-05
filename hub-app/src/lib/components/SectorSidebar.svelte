@@ -69,7 +69,7 @@
 
 		// Open the first accordion once the groups are available.
 		if (!autoOpenedFirstGroup) {
-			const first = buildGroups(list)[0];
+			const first = buildRows(list).find((row) => row.type === 'group');
 			if (first) {
 				autoOpenedFirstGroup = true;
 				openGroups.add(first.group.id);
@@ -77,10 +77,15 @@
 		}
 	});
 
-	const groups = $derived(buildGroups(layers));
+	const rows = $derived(buildRows(layers));
 
-	function buildGroups(lyrs) {
-		const groups = [];
+	/**
+	 * Ordered sidebar rows: a depth-0 layer with children becomes a group; a
+	 * depth-0 layer without children (the map can mix groups and lone layers)
+	 * becomes a loose top-level entry. Order matches the map.
+	 */
+	function buildRows(lyrs) {
+		const result = [];
 
 		for (let i = 0; i < lyrs.length; i++) {
 			const layer = lyrs[i];
@@ -93,12 +98,12 @@
 				j++;
 			}
 
-			if (children.length > 0) {
-				groups.push({ group: layer, children });
-			}
+			result.push(
+				children.length > 0 ? { type: 'group', group: layer, children } : { type: 'layer', layer }
+			);
 		}
 
-		return groups;
+		return result;
 	}
 
 	/** CMS title wins; fall back to the live map title when nothing matches. */
@@ -166,120 +171,122 @@
 	<div class="sidebar-body">
 		{#if isLoading}
 			<div class="empty"><Spinner label="Loading map layers" /></div>
-		{:else if groups.length === 0}
-			<p class="empty">No layer groups available for this map.</p>
+		{:else if rows.length === 0}
+			<p class="empty">No layers available for this map.</p>
 		{:else}
-			{#each groups as { group, children } (group.id)}
-				<div class="group">
-					<button
-						class="group-header"
-						class:open={openGroups.has(group.id)}
-						class:cross={isCrossSector(titleOf(group))}
-						onclick={() => toggleGroup(group)}
-					>
-						<span class="group-title">{titleOf(group)}</span>
-						<img
-							class="toggle-icon"
-							class:open={openGroups.has(group.id)}
-							src={accordionOpen}
-							alt=""
-						/>
-					</button>
+			{#each rows as row (row.type === 'group' ? row.group.id : row.layer.id)}
+				{#if row.type === 'group'}
+					<div class="group">
+						<button
+							class="group-header"
+							class:open={openGroups.has(row.group.id)}
+							class:cross={isCrossSector(titleOf(row.group))}
+							onclick={() => toggleGroup(row.group)}
+						>
+							<span class="group-title">{titleOf(row.group)}</span>
+							<img
+								class="toggle-icon"
+								class:open={openGroups.has(row.group.id)}
+								src={accordionOpen}
+								alt=""
+							/>
+						</button>
 
-					{#if openGroups.has(group.id)}
-						{#if layerMetadata[group.id]?.description}
-							<div class="group-detail">
-								<p class="group-description">{layerMetadata[group.id].description}</p>
+						{#if openGroups.has(row.group.id)}
+							{#if layerMetadata[row.group.id]?.description}
+								<div class="group-detail">
+									<p class="group-description">{layerMetadata[row.group.id].description}</p>
+								</div>
+							{/if}
+							<div class="layer-list" transition:slide={{ duration: 200 }}>
+								{#each row.children as layer (layer.id)}
+									{@render layerItem(layer)}
+								{/each}
 							</div>
 						{/if}
-						<div class="layer-list" transition:slide={{ duration: 200 }}>
-							{#each children as layer (layer.id)}
-								<div class="layer-item">
-									<button
-										class="layer-toggle"
-										onclick={() => toggleLayer(layer.id, !layer.visible)}
-									>
-										<span class="radio" class:active={layer.visible}>
-											{#if layer.visible}
-												<span class="radio-dot"></span>
-											{/if}
-										</span>
-										<span class="layer-name" class:active={layer.visible}>{titleOf(layer)}</span>
-									</button>
-
-									{#if layer.visible}
-										{@const meta = layerMetadata[layer.id]}
-										<div class="layer-detail" transition:slide={{ duration: 150 }}>
-											{#if (legendFor(layer.id)?.items ?? []).length > 0}
-												{#if layerAlias[layer.id]}
-													<p class="legend-heading">{layerAlias[layer.id]}</p>
-												{/if}
-												<ul class="legend-list">
-													{#each legendFor(layer.id).items as item, i (i)}
-														<li class="legend-item">
-															{#if item.previewHtml}
-																<span class="legend-symbol">{@html item.previewHtml}</span>
-															{/if}
-															<span>{item.label}</span>
-														</li>
-													{/each}
-												</ul>
-											{/if}
-
-											{#if meta?.description}
-												<p class="layer-description">{meta.description}</p>
-											{/if}
-											{#if meta?.source}
-												<p class="layer-source">
-													Source:
-													{#if meta.source.url}
-														<a href={meta.source.url} target="_blank" rel="noopener noreferrer"
-															>{meta.source.text}</a
-														>
-													{:else}
-														{meta.source.text}
-													{/if}
-												</p>
-											{/if}
-										</div>
-									{/if}
-
-									{#if layer.visible && layer.chartCount > 0}
-										<div class="layer-charts">
-											{#each Array.from({ length: layer.chartCount }, (_, i) => i) as index (index)}
-												<LayerChart layerId={layer.id} chartIndex={index} />
-											{/each}
-										</div>
-									{/if}
-
-									{#if layer.visible && layerMetadata[layer.id]?.interHub}
-										{@const interHub = layerMetadata[layer.id].interHub}
-										<div class="related-resource">
-											<p class="related-text">
-												Related Resource:
-												{#if interHub.url}
-													<a
-														class="related-link"
-														href={interHub.url}
-														target="_blank"
-														rel="noopener noreferrer">{interHub.name}</a
-													>
-												{:else}
-													{interHub.name}
-												{/if}
-											</p>
-											<img class="related-arrow" src={arrowRight} alt="" aria-hidden="true" />
-										</div>
-									{/if}
-								</div>
-							{/each}
-						</div>
-					{/if}
-				</div>
+					</div>
+				{:else}
+					<div class="layer-list">{@render layerItem(row.layer)}</div>
+				{/if}
 			{/each}
 		{/if}
 	</div>
 </aside>
+
+{#snippet layerItem(layer)}
+	<div class="layer-item">
+		<button class="layer-toggle" onclick={() => toggleLayer(layer.id, !layer.visible)}>
+			<span class="radio" class:active={layer.visible}>
+				{#if layer.visible}
+					<span class="radio-dot"></span>
+				{/if}
+			</span>
+			<span class="layer-name" class:active={layer.visible}>{titleOf(layer)}</span>
+		</button>
+
+		{#if layer.visible}
+			{@const meta = layerMetadata[layer.id]}
+			<div class="layer-detail" transition:slide={{ duration: 150 }}>
+				{#if (legendFor(layer.id)?.items ?? []).length > 0}
+					{#if layerAlias[layer.id]}
+						<p class="legend-heading">{layerAlias[layer.id]}</p>
+					{/if}
+					<ul class="legend-list">
+						{#each legendFor(layer.id).items as item, i (i)}
+							<li class="legend-item">
+								{#if item.previewHtml}
+									<span class="legend-symbol">{@html item.previewHtml}</span>
+								{/if}
+								<span>{item.label}</span>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+
+				{#if meta?.description}
+					<p class="layer-description">{meta.description}</p>
+				{/if}
+				{#if meta?.source}
+					<p class="layer-source">
+						Source:
+						{#if meta.source.url}
+							<a href={meta.source.url} target="_blank" rel="noopener noreferrer"
+								>{meta.source.text}</a
+							>
+						{:else}
+							{meta.source.text}
+						{/if}
+					</p>
+				{/if}
+			</div>
+		{/if}
+
+		{#if layer.visible && layer.chartCount > 0}
+			<div class="layer-charts">
+				{#each Array.from({ length: layer.chartCount }, (_, i) => i) as index (index)}
+					<LayerChart layerId={layer.id} chartIndex={index} />
+				{/each}
+			</div>
+		{/if}
+
+		{#if layer.visible && layerMetadata[layer.id]?.interHub}
+			{@const interHub = layerMetadata[layer.id].interHub}
+			<div class="related-resource">
+				<p class="related-text">
+					Related Resource:
+					{#if interHub.url}
+						<a class="related-link" href={interHub.url} target="_blank" rel="noopener noreferrer"
+							>{interHub.name}</a
+						>
+					{:else}
+						{interHub.name}
+					{/if}
+				</p>
+				<img class="related-arrow" src={arrowRight} alt="" aria-hidden="true" />
+			</div>
+		{/if}
+	</div>
+{/snippet}
 
 <style>
 	.sidebar {

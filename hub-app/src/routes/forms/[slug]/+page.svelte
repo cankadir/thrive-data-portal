@@ -35,6 +35,18 @@
 			available information filled in.
 		</p>
 		<p class="count">{data.rows.length} records are available in the dataset</p>
+
+		<div class="add-data">
+			<a class="add-btn" href={data.surveyUrl} target="_blank" rel="noopener noreferrer">
+				<span class="add-plus" aria-hidden="true">+</span> Add new data
+			</a>
+			{#if data.hasAttachments}
+				<p class="add-hint">
+					Please add photos after you submit the data using the
+					<span class="photos-word">Photos</span> button below!
+				</p>
+			{/if}
+		</div>
 	</header>
 
 	{#if data.rows.length === 0}
@@ -109,7 +121,51 @@
 	}
 
 	.count {
+		margin: 0 0 1rem;
+		font-weight: 600;
+	}
+
+	.add-data {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 1rem;
 		margin: 0 0 2rem;
+	}
+
+	.add-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.55rem 1.1rem;
+		border-radius: 0.5rem;
+		background: #588c02;
+		color: #fff;
+		font-size: 1rem;
+		font-weight: 600;
+		text-decoration: none;
+		white-space: nowrap;
+		cursor: pointer;
+	}
+
+	.add-btn:hover,
+	.add-btn:focus-visible {
+		background: #4a7501;
+	}
+
+	.add-plus {
+		font-size: 1.35em;
+		font-weight: 700;
+		line-height: 1;
+	}
+
+	.add-hint {
+		margin: 0;
+		color: #656364;
+	}
+
+	.photos-word {
+		color: #3064b2;
 		font-weight: 600;
 	}
 
