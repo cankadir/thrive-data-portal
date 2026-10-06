@@ -141,7 +141,7 @@ export const forms = {
 		}
 	},
 	'hub-data-submission': {
-		title: 'Resource Hub Content Submission Form',
+		title: 'Resource Library Content Submission Form',
 		description: 'Every tool submitted to the Hub, linked to its editable Survey123 response.',
 		serviceUrl:
 			'https://services3.arcgis.com/xpR2E2r2KmCE5hF3/arcgis/rest/services/survey123_46ca68a2d700413a86df84e23eca68f9_results/FeatureServer',
