@@ -1,7 +1,30 @@
 <script>
+	import { invalidateAll } from '$app/navigation';
+
 	let { data } = $props();
 
 	const columns = $derived(data.columns);
+
+	// Refresh when the user returns from the Survey123 tab (record links open in a new tab).
+	let lastRefresh = 0;
+	function refresh() {
+		const now = Date.now();
+		if (now - lastRefresh < 2000) return; // visibility + focus both fire on return
+		lastRefresh = now;
+		invalidateAll();
+	}
+
+	$effect(() => {
+		const onVisible = () => {
+			if (document.visibilityState === 'visible') refresh();
+		};
+		document.addEventListener('visibilitychange', onVisible);
+		window.addEventListener('focus', refresh);
+		return () => {
+			document.removeEventListener('visibilitychange', onVisible);
+			window.removeEventListener('focus', refresh);
+		};
+	});
 
 	const template = $derived(
 		[

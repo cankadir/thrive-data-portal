@@ -149,7 +149,11 @@ export const forms = {
 		globalIdField: 'globalid',
 		objectIdField: 'objectid',
 		labelField: 'title',
-		columns: ['author', 'is_the_tool_approved'],
+		columns: [
+			'author',
+			{ name: 'contact_perseon', label: 'Contact person', sources: ['contact_perseon'] },
+			'is_the_tool_approved'
+		],
 		statusField: 'is_the_tool_approved',
 		statusStyles: {
 			Y: { label: 'Yes', tone: 'green' },
