@@ -28,7 +28,7 @@
 <nav class="nav">
 	<div class="nav-logo" class:on-map={usesPanelLayout}>
 		<a
-			href="./"
+			href="/"
 			target="_blank"
 			rel="noopener noreferrer"
 			class="logo-link"
