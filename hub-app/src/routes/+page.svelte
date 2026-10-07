@@ -11,6 +11,7 @@
 	<section class="hero">
 		<div class="wrap">
 			<h1>Thrive Resource Hub</h1>
+			<p class="hero-subtitle">Explore the <span style="font-style: italic">beta version</span> of the Resource Hub</p>
 		</div>
 	</section>
 
@@ -50,10 +51,6 @@
 						<h2>Regional Activity Map</h2>
 						<div class="card-body">
 							<p>See what, where + how work is getting done across the region.</p>
-							<p>
-								Participate:<br />
-								add your projects to the map: <span class="link">www.link.com</span>
-							</p>
 							<span class="go-btn card-cta">
 								<img class="go-arrow go-arrow-rest" src={goToIcon} alt="" />
 								<img class="go-arrow go-arrow-hover" src={hoverArrowIcon} alt="" />
@@ -139,6 +136,14 @@
 </main>
 
 <style>
+
+	.hero-subtitle {
+		font-size: 1.5rem;
+		font-weight: 700;
+		line-height: 1.625rem;
+		color: #444;
+	}
+
 	.landing {
 		background: #e0e0d9;
 		min-height: 100vh;
@@ -159,7 +164,7 @@
 		margin: 0;
 		font-size: clamp(3rem, 6vw, 4.75rem);
 		font-weight: 700;
-		line-height: 1.05;
+		line-height: 1;
 		color: #008fa8;
 	}
 

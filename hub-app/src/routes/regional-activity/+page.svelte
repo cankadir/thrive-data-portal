@@ -10,6 +10,8 @@
 
 	const mapId = maps['regional-activity'].mapId;
 
+	const participate = { label: 'Submit your activity here', url: 'https://arcg.is/1nLbOP3' };
+
 	// `?ram=off` shows the Coming soon page, `?ram=on` forces the map — overrides
 	// the `regionalActivityMapReady` flag without a code change.
 	const override = $derived(page.url.searchParams.get('ram'));
@@ -26,6 +28,7 @@
 			sectorTint={regionalActivity.tint}
 			question=""
 			description="Explore the projects and activities happening across the Thrive region."
+			{participate}
 		/>
 		<div class="map-container">
 			<ArcGISMap
@@ -45,5 +48,9 @@
 		min-width: 0;
 		height: 100%;
 		overflow: hidden;
+		/* Larger popups than the sector maps (MapPopup defaults). */
+		--popup-min-width: 20rem;
+		--popup-max-width: 30rem;
+		--popup-max-height: 300px;
 	}
 </style>

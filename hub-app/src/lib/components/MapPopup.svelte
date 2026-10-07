@@ -183,9 +183,9 @@
 		flex-direction: column;
 		transform: translate(-50%, -100%);
 		width: max-content;
-		min-width: 12rem;
-		max-width: 22rem;
-		max-height: 250px;
+		min-width: var(--popup-min-width, 12rem);
+		max-width: var(--popup-max-width, 22rem);
+		max-height: var(--popup-max-height, 250px);
 		padding: 0.875rem 1rem 1rem;
 		background: #fff;
 		border: 2px solid var(--popup-color);
@@ -281,5 +281,10 @@
 
 	.popup-content :global(.esri-feature__content-element) {
 		padding: 0;
+	}
+
+	.popup-content :global(.esri-attachments__item-button) {
+		padding: 0 !important;
+		border: none !important;
 	}
 </style>

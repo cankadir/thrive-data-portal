@@ -18,7 +18,8 @@
 		sectorTint = '#d0d88d',
 		question = '',
 		miniTitle = '',
-		description = 'Rorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam eu turpis molestie, dictum est a, mattis tellus.'
+		description = 'Rorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam eu turpis molestie, dictum est a, mattis tellus.',
+		participate = null
 	} = $props();
 
 	let introCollapsed = $state(false);
@@ -211,6 +212,13 @@
 			{/each}
 		{/if}
 	</div>
+
+	{#if participate}
+		<a class="sidebar-footer" href={participate.url} target="_blank" rel="noopener noreferrer">
+			<p class="related-text">Participate: {participate.label}</p>
+			<img class="related-arrow" src={arrowRight} alt="" aria-hidden="true" />
+		</a>
+	{/if}
 </aside>
 
 {#snippet layerItem(layer)}
@@ -447,21 +455,31 @@
 		color: #000;
 	}
 
-	/* Inter-hub "Related Resource" banner, shown for a visible layer whose CMS row has one. */
-	.related-resource {
+	/* Purple link banner (inter-hub "Related Resource" + the sidebar "Participate" footer). */
+	.related-resource,
+	.sidebar-footer {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 1rem;
 		min-height: 3.1875rem;
-		/* Break out of the `.layer-item` horizontal padding to sit full-bleed. */
-		margin: 0 -1rem;
 		padding: 0.5rem 1rem;
 		background: #81749a;
 		color: #fff;
 		font-size: 1.125rem;
 		font-weight: 700;
 		line-height: 1.3;
+	}
+
+	/* Break out of the `.layer-item` horizontal padding to sit full-bleed. */
+	.related-resource {
+		margin: 0 -1rem;
+	}
+
+	.sidebar-footer {
+		flex-shrink: 0;
+		text-decoration: none;
+		cursor: pointer;
 	}
 
 	.related-text {
