@@ -53,6 +53,8 @@
 				>
 					{toggleLabel}
 				</a>
+
+				<!-- Sector maps -->
 				<div class="sector-dropdown">
 					{#each sectors as sector (sector.id)}
 						<a
@@ -77,6 +79,7 @@
 			>
 		</div>
 
+		<!-- Home button to Thrive -->
 		{#if !isLanding}
 			<div class="nav-home">
 				<a href="https://www.thriveregionalpartnership.org" class="home-link" aria-label="Home">

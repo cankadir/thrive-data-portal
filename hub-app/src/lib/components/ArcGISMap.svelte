@@ -180,6 +180,7 @@
 	   ring on `.esri-view-surface:focus::after` from `--esri-view-outline`
 	   (default `2px solid var(--calcite-color-brand)` = blue). Kill the variables
 	   and the pseudo-element. */
+	/*Remove ESRI's default selected blue color.*/   
 	:global(.esri-view) {
 		--esri-view-outline-color: none !important;
 		--esri-view-outline: none !important;

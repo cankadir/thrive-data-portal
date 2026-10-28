@@ -185,13 +185,11 @@
 	</section>
 
 	<section class="cards">
-		{#if visibleTools.length > 0}
-			<div class="grid">
-				{#each visibleTools as tool (tool.attributes.globalid)}
-					<ResourceCard {tool} />
-				{/each}
-			</div>
-		{/if}
+		<div class="grid">
+			{#each visibleTools as tool (tool.attributes.globalid)}
+				<ResourceCard {tool} />
+			{/each}
+		</div>
 	</section>
 
 	<section class="tagline">

@@ -138,6 +138,13 @@
 	function legendFor(layerId) {
 		return legend.find((entry) => entry.layerId === layerId);
 	}
+
+	// A simple renderer has one symbol for the whole layer, so its legend item
+	// carries no category label — fall back to the layer's (CMS) title.
+	function legendLabel(layer, item) {
+		if (item.label) return item.label;
+		return legendFor(layer.id)?.simple ? titleOf(layer) : '';
+	}
 </script>
 
 <aside class="sidebar" style:--sector-button={sectorButton} style:--sector-tint={sectorTint}>
@@ -241,11 +248,12 @@
 					{/if}
 					<ul class="legend-list">
 						{#each legendFor(layer.id).items as item, i (i)}
+							{@const label = legendLabel(layer, item)}
 							<li class="legend-item">
-								{#if item.previewHtml}
-									<span class="legend-symbol">{@html item.previewHtml}</span>
-								{/if}
-								<span>{item.label}</span>
+								<span class="legend-symbol {item.kind ?? 'square'}">
+									{#if item.previewHtml}{@html item.previewHtml}{/if}
+								</span>
+								{#if label}<span>{label}</span>{/if}
 							</li>
 						{/each}
 					</ul>
@@ -610,20 +618,62 @@
 	}
 
 	.legend-item {
-		display: flex;
+		display: grid;
+		grid-template-columns: 3.6rem minmax(0, 1fr);
 		align-items: center;
-		gap: 0.5rem;
+		column-gap: 0.5rem;
 		font-size: 1rem;
 		color: #444;
 		padding: 0.12rem 0;
 	}
 
+	/* Every legend row gets the same swatch cell, so labels stay aligned
+	   whether the symbol is a marker, a fill or a wide line sample. */
+	.legend-symbol {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 1.25rem;
+	}
+
+	/* Esri wraps 2D previews in a div; it has to fill the cell for the
+	   percentage sizes below to resolve. */
+	.legend-symbol.line > :global(div),
+	.legend-symbol.square > :global(div) {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
 	.legend-symbol :global(svg),
 	.legend-symbol :global(img) {
+		display: block;
+		max-width: 100%;
+		max-height: 100%;
+	}
+
+	/* Line previews are wide strips (e.g. 50×2): fit the cell width and let the
+	   height follow, which keeps the authored stroke/dash weight. */
+	.legend-symbol.line :global(svg),
+	.legend-symbol.line :global(img) {
+		width: 100%;
+		height: auto;
+	}
+
+	/* Markers, fills and CIM symbols are square swatches: fit the cell height. */
+	.legend-symbol.square :global(svg),
+	.legend-symbol.square :global(img) {
+		height: 100%;
+		width: auto;
+	}
+
+	/* Color/relationship/pie ramps are wide blocks with their own aspect. */
+	.legend-symbol.ramp :global(svg),
+	.legend-symbol.ramp :global(img) {
 		width: auto;
 		height: 1.2rem;
-		max-width: 3.6rem;
-		object-fit: contain;
-		display: block;
+		max-width: 100%;
 	}
 </style>

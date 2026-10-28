@@ -63,16 +63,6 @@ function chartCountOf(layer) {
 		: 0;
 }
 
-/**
- * A simple renderer draws every feature the same way — one symbol, no
- * categories or gradation. A single unlabeled swatch is not worth showing, so
- * those layers get no legend.
- * @param {unknown} layer
- */
-function isSimpleRendererLayer(layer) {
-	return /** @type {any} */ (layer)?.renderer?.type === 'simple';
-}
-
 /** Fast layer-only extraction, no legend */
 export async function extractLayers(view) {
 	if (!view?.map) return [];
@@ -137,8 +127,6 @@ async function extractLegend(legendVM, view) {
 
 	for (const info of flattenTree(legendVM.activeLayerInfos)) {
 		try {
-			if (isSimpleRendererLayer(info.layer)) continue;
-
 			const layerId = info.layer?.id ?? null;
 			let items = await legendFromElements(toArray(info.legendElements));
 
@@ -148,7 +136,7 @@ async function extractLegend(legendVM, view) {
 
 			if (items.length === 0) continue;
 
-			legend.push({ layerId, items });
+			legend.push({ layerId, items, simple: info.layer?.renderer?.type === 'simple' });
 		} catch (e) {
 			console.warn('Legend entry skipped:', e);
 		}
@@ -160,10 +148,14 @@ async function extractLegend(legendVM, view) {
 
 		try {
 			const arcLayer = view.map.findLayerById(layer.id);
-			if (!arcLayer || isSimpleRendererLayer(arcLayer)) continue;
+			if (!arcLayer) continue;
 			const items = await legendFromRenderer(arcLayer);
 			if (items.length > 0) {
-				legend.push({ layerId: layer.id, items });
+				legend.push({
+					layerId: layer.id,
+					items,
+					simple: arcLayer.renderer?.type === 'simple'
+				});
 			}
 		} catch (e) {
 			console.warn('Missing legend entry skipped:', e);
@@ -184,7 +176,15 @@ async function legendFromRenderer(layer) {
 	}
 
 	const renderer = layer?.renderer;
-	if (!renderer || renderer.type === 'simple') return [];
+	if (!renderer) return [];
+
+	// A simple renderer draws the whole layer with one symbol: one swatch, no label.
+	if (renderer.type === 'simple') {
+		const preview = renderer.symbol ? await symbolPreview(renderer.symbol) : null;
+		return preview
+			? [{ label: '', type: 'symbol', kind: preview.kind, previewHtml: preview.html }]
+			: [];
+	}
 
 	const items = [];
 
@@ -195,12 +195,14 @@ async function legendFromRenderer(layer) {
 				? renderer.classBreakInfos
 				: []
 	)) {
+		const preview = info.symbol ? await symbolPreview(info.symbol) : null;
 		items.push({
 			label:
 				info.label ??
 				(info.value != null ? String(info.value) : `${info.minValue} – ${info.maxValue}`),
 			type: 'symbol',
-			previewHtml: info.symbol ? await symbolToHtml(info.symbol) : null
+			kind: preview?.kind ?? null,
+			previewHtml: preview?.html ?? null
 		});
 	}
 
@@ -220,10 +222,12 @@ async function legendFromElements(elements) {
 
 		if (element.type === 'symbol-table') {
 			for (const info of toArray(element.infos)) {
+				const preview = info.symbol ? await symbolPreview(info.symbol) : null;
 				items.push({
 					label: info.label ?? '',
 					type: 'symbol',
-					previewHtml: info.symbol ? await symbolToHtml(info.symbol) : null
+					kind: preview?.kind ?? null,
+					previewHtml: preview?.html ?? null
 				});
 			}
 			continue;
@@ -251,9 +255,9 @@ async function rampItem(element) {
 			preview = withSvgViewBox(symbolUtils.renderPieChartPreviewHTML(element));
 		}
 
-		return { label, type, previewHtml: preview?.outerHTML ?? null };
+		return { label, type, kind: 'ramp', previewHtml: preview?.outerHTML ?? null };
 	} catch {
-		return { label, type, previewHtml: null };
+		return { label, type, kind: 'ramp', previewHtml: null };
 	}
 }
 
@@ -261,7 +265,7 @@ async function rampItem(element) {
  * Esri's preview SVGs carry width/height but no `viewBox`, so the fixed-size
  * legend CSS can't scale them: wide line previews (e.g. a 50×22 dotted line)
  * get cropped to a single dot. Derive a viewBox from the intrinsic size so the
- * preview scales into the 1.2rem box instead.
+ * preview scales into the legend cell instead.
  * @param {any} element
  */
 function withSvgViewBox(element) {
@@ -274,11 +278,43 @@ function withSvgViewBox(element) {
 	return element;
 }
 
-/** @param {unknown} symbol */
-async function symbolToHtml(symbol) {
+/**
+ * Esri 2D previews have two shapes: a wide strip for lines (`50×2`) and a
+ * square swatch for markers, fills and CIM symbols (`22×22`). The legend gives
+ * both one fixed cell, so each kind is fitted differently (see
+ * SectorSidebar's `.legend-symbol.line` / `.legend-symbol.square`): fitting a
+ * 50×2 strip by height crushes it, fitting a marker by width stretches it.
+ * @param {any} element
+ */
+function previewKind(element) {
+	const svg = element?.tagName?.toLowerCase() === 'svg' ? element : element?.querySelector?.('svg');
+	const box = svg ?? element;
+	const viewBox = box?.getAttribute?.('viewBox');
+
+	if (viewBox) {
+		const [, , width, height] = viewBox.split(/[\s,]+/).map(Number);
+		if (width > 0 && height > 0) return width / height >= 4 ? 'line' : 'square';
+	}
+
+	const width = parseFloat(box?.getAttribute?.('width'));
+	const height = parseFloat(box?.getAttribute?.('height'));
+	return width > 0 && height > 0 && width / height >= 4 ? 'line' : 'square';
+}
+
+/**
+ * Render a symbol preview plus its layout kind.
+ *
+ * Deliberately no `size` option: renderPreviewHTML treats a numeric `size` as a
+ * viewport for every symbol type, which makes simple-line symbols draw as a
+ * full-height bar (a 2px dotted line becomes a thick pill) and forces markers
+ * to one size. Without it each preview keeps its authored stroke weight.
+ * @param {unknown} symbol
+ */
+async function symbolPreview(symbol) {
 	try {
-		const element = withSvgViewBox(await symbolUtils.renderPreviewHTML(symbol, { size: 16 }));
-		return element?.outerHTML ?? null;
+		const element = withSvgViewBox(await symbolUtils.renderPreviewHTML(symbol));
+		if (!element) return null;
+		return { html: element.outerHTML, kind: previewKind(element) };
 	} catch {
 		return null;
 	}
