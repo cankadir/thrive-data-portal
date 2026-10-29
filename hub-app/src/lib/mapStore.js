@@ -34,10 +34,33 @@ export function setMapLayerVisibility(layerId, visible) {
 	if (visible) {
 		let parent = findParentGroup(view.map, layer);
 		while (parent) {
-			parent.visible = true;
+			// Only write when it actually changes: assigning `true` to an
+			// already-visible group makes Esri redraw the whole group subtree.
+			if (!parent.visible) parent.visible = true;
 			parent = findParentGroup(view.map, parent);
 		}
 	}
+}
+
+/**
+ * Mirror the live layers' `visible` flags into the store. Used instead of a
+ * full panel re-extract on a visibility change: re-extracting builds a new
+ * LegendViewModel, which asks the view for a layer view per layer, and a
+ * freshly created layer view paints a hidden sibling for one frame.
+ */
+export function syncLayerVisibility() {
+	const view = get(mapView);
+	if (!view?.map) return;
+
+	let changed = false;
+	const next = get(mapLayers).map((entry) => {
+		const layer = view.map.findLayerById(entry.id);
+		if (!layer || layer.visible === entry.visible) return entry;
+		changed = true;
+		return { ...entry, visible: layer.visible };
+	});
+
+	if (changed) mapLayers.set(next);
 }
 
 /**

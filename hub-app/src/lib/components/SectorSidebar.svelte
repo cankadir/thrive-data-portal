@@ -10,7 +10,7 @@
 	import arrowRight from '$lib/assets/icons/arrow-right.svg';
 
 	let {
-		mapId = null,
+		mapTitle = null,
 		sectorName = 'Sector',
 		sectorColor = '#a9b54d',
 		sectorIcon = '',
@@ -38,8 +38,8 @@
 	let autoOpenedFirstGroup = false;
 
 	/** CMS content (title/description/links) for every layer and group, one query per map. */
-	async function loadContent(id, list) {
-		const content = await fetchMapContent(id, list);
+	async function loadContent(title, list) {
+		const content = await fetchMapContent(title, list);
 		layerMetadata = { ...layerMetadata, ...content };
 	}
 
@@ -58,8 +58,8 @@
 	$effect(() => {
 		const list = layers;
 
-		if (mapId && list.length > 0) {
-			loadContent(mapId, list);
+		if (mapTitle && list.length > 0) {
+			loadContent(mapTitle, list);
 		}
 
 		for (const l of list) {

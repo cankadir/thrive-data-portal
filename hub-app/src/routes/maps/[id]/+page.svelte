@@ -16,7 +16,7 @@
 	<MapPageLayout>
 		{#if sector}
 			<SectorSidebar
-				mapId={map.mapId}
+				mapTitle={map.cmsTitle ?? map.title}
 				sectorName={sector.name}
 				sectorColor={sector.color}
 				sectorIcon={sector.icon}
@@ -27,7 +27,7 @@
 				description={sector.description}
 			/>
 		{:else}
-			<MapLayerPanel />
+			<MapLayerPanel mapTitle={map.cmsTitle ?? map.title} />
 		{/if}
 		<div class="map-container">
 			<ArcGISMap

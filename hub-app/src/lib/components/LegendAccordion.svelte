@@ -1,7 +1,7 @@
 <script>
-	import { fetchLayerMetadata } from '$lib/map/fetchSublayerMetadata';
+	import { fetchLayerContent } from '$lib/map/fetchSublayerMetadata';
 
-	let { items = [], layerId = null, layerUrl = null } = $props();
+	let { items = [], layerId = null, mapTitle = null, layerTitle = null } = $props();
 
 	let metadataLoading = $state(false);
 	let metadataLoaded = $state(false);
@@ -17,7 +17,7 @@
 		description = null;
 
 		try {
-			const data = await fetchLayerMetadata(layerId, { layerUrl });
+			const data = await fetchLayerContent({ mapTitle, layerTitle });
 			description = data.description;
 			metadataLoaded = true;
 		} finally {

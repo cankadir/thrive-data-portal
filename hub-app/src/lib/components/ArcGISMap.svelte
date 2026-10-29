@@ -6,7 +6,8 @@
 		mapLegend,
 		mapLoading,
 		mapPopup,
-		clearMapState
+		clearMapState,
+		syncLayerVisibility
 	} from '$lib/mapStore';
 	import {
 		extractLayers,
@@ -28,11 +29,15 @@
 		return Promise.all([extractLayers(view), extractLegendLazy(view)]);
 	}
 
-	/** @param {import('@arcgis/core/views/MapView').default} view */
-	async function updatePanel(view) {
-		const [layers, legend] = await extractPanel(view);
-		mapLayers.set(layers);
-		mapLegend.set(legend);
+	/**
+	 * Visibility-only refresh: patch the store's `visible` flags rather than
+	 * re-extracting layers + legend. Re-extraction builds a new LegendViewModel,
+	 * which makes the view create a layer view per layer — a freshly created
+	 * layer view paints a hidden layer for one frame, so siblings appear to
+	 * "flash back to life" whenever an unrelated layer is toggled.
+	 */
+	async function updateVisibility() {
+		syncLayerVisibility();
 	}
 
 	/** @param {HTMLDivElement} container */
@@ -133,7 +138,7 @@
 				mapLayers.set(layers);
 				mapLegend.set(legend);
 
-				layerWatchHandle = watchMapLayerChanges(view, () => updatePanel(view));
+				layerWatchHandle = watchMapLayerChanges(view, () => updateVisibility());
 			} catch (error) {
 				console.error('Failed to load map:', error);
 			} finally {
@@ -180,7 +185,7 @@
 	   ring on `.esri-view-surface:focus::after` from `--esri-view-outline`
 	   (default `2px solid var(--calcite-color-brand)` = blue). Kill the variables
 	   and the pseudo-element. */
-	/*Remove ESRI's default selected blue color.*/   
+	/*Remove ESRI's default selected blue color.*/
 	:global(.esri-view) {
 		--esri-view-outline-color: none !important;
 		--esri-view-outline: none !important;

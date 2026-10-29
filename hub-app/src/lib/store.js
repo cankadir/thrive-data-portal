@@ -19,6 +19,9 @@ export const maps = {
 	},
 	'regional-activity': {
 		title: 'Regional Activity Map',
+		// CMS `map_title` for this webmap. Kept separate from `title` so display
+		// copy and the CMS key can't drift into each other.
+		cmsTitle: 'Thrive Projects Activity Map Survey',
 		mapId: '79e19dd5e63645beb992122c502b69e5'
 	}
 };

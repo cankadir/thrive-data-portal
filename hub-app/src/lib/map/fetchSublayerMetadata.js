@@ -1,6 +1,7 @@
 // Layer content for the map panel. Descriptions and links are read from the
-// CMS_DataDetails layer (see cmsContent.js), which is authoritative for the
-// sector maps — there is no fallback to REST/portal metadata.
+// `cms_simple` table (see cmsContent.js) and matched by map name + layer title,
+// which is authoritative for the sector maps — there is no fallback to
+// REST/portal metadata.
 
 import { get } from 'svelte/store';
 import { mapView } from '$lib/mapStore';
@@ -93,39 +94,20 @@ function resolveRendererField(renderer) {
 }
 
 /**
- * CMS content for a layer: description, source link and inter-hub link.
- * @param {string} layerId
- * @param {{ layerUrl?: string | null }} [options]
+ * CMS content for one layer: description, source link and inter-hub link.
+ * @param {{ mapTitle?: string | null, layerTitle?: string | null }} identity
  * @returns {Promise<LayerContent>}
  */
-export async function fetchLayerMetadata(layerId, options = {}) {
-	if (!layerId) return EMPTY;
+export async function fetchLayerContent(identity = {}) {
+	if (!identity.mapTitle || !identity.layerTitle) return EMPTY;
 
-	const cacheKey = `${layerId}:${options.layerUrl ?? ''}`;
+	const cacheKey = `${identity.mapTitle}:${identity.layerTitle}`;
 	if (cache.has(cacheKey)) {
 		return cache.get(cacheKey);
 	}
 
 	const request = (async () => {
-		const view = get(mapView);
-		const layer = view?.map?.findLayerById(layerId);
-		if (!layer || !view?.map) {
-			console.warn('[Layer metadata] Layer not found:', layerId);
-			return EMPTY;
-		}
-
-		try {
-			await layer.load();
-		} catch (error) {
-			console.warn('[Layer metadata] Failed to load layer:', layerId, error);
-		}
-
-		const row = await matchCmsRow(view.map.portalItem?.id, {
-			itemId: layer.portalItem?.id ?? layer.parent?.portalItem?.id ?? null,
-			url: layer.url ?? options.layerUrl ?? null,
-			sublayerId: layer.layerId ?? layer.source?.mapLayerId ?? null
-		});
-
+		const row = await matchCmsRow(identity.mapTitle, identity.layerTitle);
 		return row ? contentFromRow(row) : EMPTY;
 	})();
 
@@ -134,24 +116,20 @@ export async function fetchLayerMetadata(layerId, options = {}) {
 }
 
 /**
- * Batch CMS content for many layers/groups at once: one CMS query per map
- * (cached in `loadCmsForMap`), matched in memory. No per-layer `layer.load()`.
- * @param {string | null | undefined} mapId
- * @param {{ id: string, itemId?: string | null, url?: string | null, sublayerId?: number | string | null }[]} entries
+ * Batch CMS content for many layers/groups at once: the table is loaded once
+ * (cached in `loadCmsRows`) and matched in memory by title.
+ * @param {string | null | undefined} mapTitle
+ * @param {{ id: string, title: string }[]} entries
  * @returns {Promise<Record<string, LayerContent>>}
  */
-export async function fetchMapContent(mapId, entries) {
+export async function fetchMapContent(mapTitle, entries) {
 	/** @type {Record<string, LayerContent>} */
 	const result = {};
-	if (!mapId) return result;
+	if (!mapTitle) return result;
 
 	await Promise.all(
 		entries.map(async (entry) => {
-			const row = await matchCmsRow(mapId, {
-				itemId: entry.itemId,
-				url: entry.url,
-				sublayerId: entry.sublayerId
-			});
+			const row = await matchCmsRow(mapTitle, entry.title);
 			if (row) result[entry.id] = contentFromRow(row);
 		})
 	);

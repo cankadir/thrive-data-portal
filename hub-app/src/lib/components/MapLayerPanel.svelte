@@ -2,6 +2,8 @@
 	import { mapLayers, mapLegend, mapLoading, setMapLayerVisibility } from '$lib/mapStore';
 	import LegendAccordion from '$lib/components/LegendAccordion.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
+
+	let { mapTitle = null } = $props();
 </script>
 
 <section class="panel">
@@ -38,7 +40,8 @@
 							<LegendAccordion
 								items={legendEntry?.items ?? []}
 								layerId={layer.id}
-								layerUrl={layer.url}
+								layerTitle={layer.title}
+								{mapTitle}
 							/>
 						</div>
 					{/if}

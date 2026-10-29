@@ -21,7 +21,7 @@
 {#if showMap}
 	<MapPageLayout>
 		<SectorSidebar
-			{mapId}
+			mapTitle={maps['regional-activity'].cmsTitle}
 			sectorName={regionalActivity.label}
 			sectorColor={regionalActivity.color}
 			sectorButton={regionalActivity.button}

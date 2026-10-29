@@ -183,9 +183,9 @@
 		flex-direction: column;
 		transform: translate(-50%, -100%);
 		width: max-content;
-		min-width: var(--popup-min-width, 12rem);
-		max-width: var(--popup-max-width, 22rem);
-		max-height: var(--popup-max-height, 250px);
+		min-width: var(--popup-min-width, 9.6rem);
+		max-width: var(--popup-max-width, 17.6rem);
+		max-height: var(--popup-max-height, 200px);
 		padding: 0.875rem 1rem 1rem;
 		background: #fff;
 		border: 2px solid var(--popup-color);
@@ -235,7 +235,7 @@
 	.popup-title {
 		margin: 0 0 0.5rem;
 		padding-right: 1.25rem;
-		font-size: 1rem;
+		font-size: 0.8rem;
 		font-weight: 600;
 		line-height: 1.3;
 	}
@@ -266,7 +266,7 @@
 		--esri-widget-padding-y: 0;
 		padding: 0 0.5rem 0 0.25rem !important;
 		font-family: 'Montserrat', sans-serif;
-		font-size: 1rem;
+		font-size: 0.8rem;
 		line-height: 1.35;
 	}
 
@@ -274,6 +274,7 @@
 		background-color: transparent !important;
 		box-shadow: none !important;
 		font-family: 'Montserrat', sans-serif;
+		font-size: 0.8rem;
 		--esri-widget-padding-x: 0;
 		--esri-widget-padding-y: 0;
 		padding: 0 !important;

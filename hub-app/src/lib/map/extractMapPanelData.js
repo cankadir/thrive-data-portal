@@ -69,15 +69,18 @@ export async function extractLayers(view) {
 	await view.when();
 
 	let layers = [];
+	let layerListVM;
 
 	try {
-		const layerListVM = new LayerListViewModel({ view });
+		layerListVM = new LayerListViewModel({ view });
 		await waitForItems(() => toArray(layerListVM.operationalItems), 2000);
 		const fromList = flattenOperationalItems(layerListVM.operationalItems);
 		layers = fromList.length > 0 ? fromList : safeWalkMapLayers(view);
 	} catch (error) {
 		console.warn('Layer extraction failed, falling back to map layers:', error);
 		layers = safeWalkMapLayers(view);
+	} finally {
+		layerListVM?.destroy();
 	}
 
 	return layers;
@@ -89,11 +92,15 @@ export async function extractLegendLazy(view) {
 	await view.when();
 
 	let legend = [];
+	let legendVM;
+
 	try {
-		const legendVM = new LegendViewModel({ view, respectLayerVisibility: false });
+		legendVM = new LegendViewModel({ view, respectLayerVisibility: false });
 		legend = await extractLegend(legendVM, view);
 	} catch (error) {
 		console.warn('Legend extraction failed:', error);
+	} finally {
+		legendVM?.destroy();
 	}
 	return legend;
 }

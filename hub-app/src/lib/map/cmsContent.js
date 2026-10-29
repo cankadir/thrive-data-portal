@@ -1,50 +1,46 @@
-// CMS content for the map panel. Descriptions, source links and inter-hub links
-// are authored in the CMS_DataDetails feature layer (survey123-backed) and are
-// authoritative — there is no fallback to REST/portal metadata.
+// CMS content for the map panel. Descriptions and links are authored in the
+// `cms_simple` table and matched to live map layers by map name + layer title.
+// The whole table is loaded once and filtered in memory, so a map page never
+// needs an id or a per-map query.
 
-const CMS_LAYER_URL =
-	'https://services3.arcgis.com/xpR2E2r2KmCE5hF3/arcgis/rest/services/CMS_DataDetails/FeatureServer/0';
+const CMS_TABLE_URL =
+	'https://services3.arcgis.com/xpR2E2r2KmCE5hF3/arcgis/rest/services/cms_simple/FeatureServer/0';
 
 const OUT_FIELDS = [
-	'kind',
-	'node_title',
-	'item_id',
-	'sublayer_id',
-	'url',
+	'map_title',
+	'layer_title_inmap',
+	'layer_title_display',
 	'new_description',
 	'source',
+	'cross_link',
 	'data_source_link',
 	'inter_hub_link_name',
 	'inter_hub_link_url'
 ].join(',');
 
-/** @type {Map<string, Promise<object[]>>} */
-const cache = new Map();
+/** @type {Promise<object[]> | null} */
+let rowsPromise = null;
 
 /**
- * CMS rows for a webmap (keyed by the webmap item id), fetched once per map.
- * @param {string | null | undefined} mapId
+ * Every CMS row (~100). Shared by all maps; pages filter by map name.
  * @returns {Promise<object[]>}
  */
-export function loadCmsForMap(mapId) {
-	if (!mapId) return Promise.resolve([]);
-	if (!cache.has(mapId)) {
-		cache.set(mapId, fetchCmsRows(mapId));
-	}
-	return cache.get(mapId);
+export function loadCmsRows() {
+	if (!rowsPromise) rowsPromise = fetchRows();
+	return rowsPromise;
 }
 
-/** @param {string} mapId */
-async function fetchCmsRows(mapId) {
+/** @returns {Promise<object[]>} */
+async function fetchRows() {
 	try {
 		const params = new URLSearchParams({
-			where: `map_id='${mapId.replaceAll("'", "''")}'`,
+			where: '1=1',
 			outFields: OUT_FIELDS,
 			returnGeometry: 'false',
 			resultRecordCount: '2000',
 			f: 'json'
 		});
-		const response = await fetch(`${CMS_LAYER_URL}/query?${params}`);
+		const response = await fetch(`${CMS_TABLE_URL}/query?${params}`);
 		if (!response.ok) return [];
 
 		const data = await response.json();
@@ -55,9 +51,9 @@ async function fetchCmsRows(mapId) {
 	}
 }
 
-/** @param {object | null | undefined} row */
+/** Optional display-title override for a row. @param {object | null | undefined} row */
 export function cmsTitle(row) {
-	return row?.node_title?.trim() || null;
+	return row?.layer_title_display?.trim() || null;
 }
 
 /** @param {object | null | undefined} row */
@@ -79,46 +75,33 @@ export function cmsLinks(row) {
 }
 
 /**
- * Find the CMS row for a live map layer. Layers sharing one portal item (a
- * multi-layer service — the "Trip Updates", Census, Safety layers) are told
- * apart by their service sublayer number, not their title.
- *   1. `item_id` + `sublayer_id` (layers/sublayers of a shared service item),
- *   2. normalized URL (sublayers whose CMS `url` carries `/FeatureServer/<n>`),
- *   3. `item_id` alone (group layers, single-layer service items).
- * Titles never connect a live layer to CMS — the CMS owns the display title.
- * @param {string | null | undefined} mapId
- * @param {{ itemId?: string | null, url?: string | null, sublayerId?: number | string | null }} identity
+ * CMS row for a live map node: the map name plus the layer's title in the map.
+ * Group names live in the same column, so groups and layers share a namespace.
+ * @param {string | null | undefined} mapTitle
+ * @param {string | null | undefined} layerTitle
  */
-export async function matchCmsRow(mapId, { itemId, url, sublayerId }) {
-	const rows = await loadCmsForMap(mapId);
-	if (rows.length === 0) return null;
+export async function matchCmsRow(mapTitle, layerTitle) {
+	const wantedMap = normalize(mapTitle);
+	const wantedLayer = normalize(layerTitle);
+	if (!wantedMap || !wantedLayer) return null;
 
-	if (itemId && sublayerId != null) {
-		const wanted = String(sublayerId);
-		const byLayer = rows.filter(
-			(row) => row.item_id === itemId && String(row.sublayer_id) === wanted
-		);
-		if (byLayer.length > 0) return byLayer[0];
-	}
-
-	const targetUrl = normalizeUrl(url);
-	if (targetUrl) {
-		const byUrl = rows.filter((row) => normalizeUrl(row.url) === targetUrl);
-		if (byUrl.length > 0) return byUrl[0];
-	}
-
-	if (itemId) {
-		const byItem = rows.filter((row) => row.item_id === itemId);
-		if (byItem.length > 0) return byItem[0];
-	}
-	return null;
+	const rows = await loadCmsRows();
+	return (
+		rows.find(
+			(row) =>
+				normalize(row.map_title) === wantedMap && normalize(row.layer_title_inmap) === wantedLayer
+		) ?? null
+	);
 }
 
-/** @param {string | null | undefined} url */
-function normalizeUrl(url) {
-	return url ? url.split('?')[0].replace(/\/+$/, '').toLowerCase() : null;
+/** Titles come from Excel and AGOL, so ignore case and stray whitespace. */
+function normalize(value) {
+	return String(value ?? '')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.toLowerCase();
 }
 
 export function clearCmsCache() {
-	cache.clear();
+	rowsPromise = null;
 }
