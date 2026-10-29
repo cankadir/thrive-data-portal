@@ -11,7 +11,9 @@
 	<section class="hero">
 		<div class="wrap">
 			<h1>Thrive Resource Hub</h1>
-			<p class="hero-subtitle">Explore the <span style="font-style: italic">beta version</span> of the Resource Hub</p>
+			<p class="hero-subtitle">
+				Explore the <span style="font-style: italic">beta version</span> of the Resource Hub
+			</p>
 		</div>
 	</section>
 
@@ -136,7 +138,6 @@
 </main>
 
 <style>
-
 	.hero-subtitle {
 		font-size: 1.5rem;
 		font-weight: 700;

@@ -27,12 +27,7 @@
 
 <nav class="nav">
 	<div class="nav-logo" class:on-map={usesPanelLayout}>
-		<a
-			href="/"
-			target="_blank"
-			rel="noopener noreferrer"
-			class="logo-link"
-		>
+		<a href="/" target="_blank" rel="noopener noreferrer" class="logo-link">
 			<img src={thriveLogo} alt="Thrive" class="logo" />
 		</a>
 	</div>
