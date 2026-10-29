@@ -162,34 +162,36 @@ export const forms = {
 		emptyStatus: { label: 'Needs review', tone: 'grey' },
 		surveyUrl: 'https://survey123.arcgis.com/share/46ca68a2d700413a86df84e23eca68f9'
 	},
-	'cms-data-descriptions': {
-		title: 'CMS Data Descriptions — Map Content Editor',
+	'cms-simple': {
+		title: 'CMS Simple — Map Content Editor',
 		description:
-			'Every group, layer, and sublayer in the sector maps, linked to its editable CMS description response.',
+			'One row per group and layer in the sector maps, matched to the sidebar by map name + layer title in map.',
 		serviceUrl:
-			'https://services3.arcgis.com/xpR2E2r2KmCE5hF3/arcgis/rest/services/CMS_DataDetails/FeatureServer',
+			'https://services3.arcgis.com/xpR2E2r2KmCE5hF3/arcgis/rest/services/cms_simple/FeatureServer',
 		layerId: 0,
 		globalIdField: 'GlobalID',
 		objectIdField: 'FID',
-		labelField: 'node_title',
+		labelField: 'layer_title_inmap',
 		columns: [
 			'map_title',
-			'group_path',
+			'layer_title_inmap',
+			'layer_title_display',
 			{
-				name: 'new_description',
-				label: 'New description filled',
+				name: 'description_filled',
+				label: 'Description filled',
 				sources: ['new_description'],
-				value: (attrs) => (attrs.new_description?.trim() ? 'yes' : 'no'),
+				value: (attrs) => ((attrs.new_description ?? '').trim() ? 'yes' : 'no'),
 				styles: {
 					yes: { label: 'Yes', tone: 'green' },
 					no: { label: 'No', tone: 'red' }
 				}
 			},
 			{
-				name: 'data_source',
-				label: 'Data Source',
-				sources: ['data_source_link'],
-				value: (attrs) => ((attrs.data_source_link ?? '').trim() ? 'yes' : 'no'),
+				name: 'source',
+				label: 'Source',
+				sources: ['source', 'data_source_link'],
+				value: (attrs) =>
+					(attrs.source ?? '').trim() || (attrs.data_source_link ?? '').trim() ? 'yes' : 'no',
 				styles: {
 					yes: { label: 'Yes', tone: 'green' },
 					no: { label: 'No', tone: 'red' }
@@ -198,15 +200,18 @@ export const forms = {
 			{
 				name: 'inter_hub_link',
 				label: 'Inter-hub link',
-				sources: ['inter_hub_link_url'],
-				value: (attrs) => ((attrs.inter_hub_link_url ?? '').trim() ? 'yes' : 'no'),
+				sources: ['inter_hub_link_name', 'inter_hub_link_url'],
+				value: (attrs) =>
+					(attrs.inter_hub_link_name ?? '').trim() || (attrs.inter_hub_link_url ?? '').trim()
+						? 'yes'
+						: 'no',
 				styles: {
 					yes: { label: 'Yes', tone: 'green' },
 					no: { label: 'No', tone: 'red' }
 				}
 			}
 		],
-		surveyUrl: 'https://survey123.arcgis.com/share/d4df43573e564cc4b1b933ef1e974b10'
+		surveyUrl: 'https://survey123.arcgis.com/share/6861990033924816a89431c6915815dc'
 	}
 };
 

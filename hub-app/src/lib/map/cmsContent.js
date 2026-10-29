@@ -6,17 +6,19 @@
 const CMS_TABLE_URL =
 	'https://services3.arcgis.com/xpR2E2r2KmCE5hF3/arcgis/rest/services/cms_simple/FeatureServer/0';
 
-const OUT_FIELDS = [
+// Fields the code reads. `*` is requested so adding or dropping a column never
+// breaks the query; this list is only used to shout when one we depend on goes
+// missing (a renamed key would otherwise just match nothing, silently).
+const REQUIRED_FIELDS = [
 	'map_title',
 	'layer_title_inmap',
 	'layer_title_display',
 	'new_description',
 	'source',
-	'cross_link',
 	'data_source_link',
 	'inter_hub_link_name',
 	'inter_hub_link_url'
-].join(',');
+];
 
 /** @type {Promise<object[]> | null} */
 let rowsPromise = null;
@@ -35,16 +37,26 @@ async function fetchRows() {
 	try {
 		const params = new URLSearchParams({
 			where: '1=1',
-			outFields: OUT_FIELDS,
+			outFields: '*',
 			returnGeometry: 'false',
 			resultRecordCount: '2000',
 			f: 'json'
 		});
 		const response = await fetch(`${CMS_TABLE_URL}/query?${params}`);
-		if (!response.ok) return [];
+		if (!response.ok) {
+			console.warn('[CMS] Query failed:', response.status, await response.text());
+			return [];
+		}
 
 		const data = await response.json();
-		return (data.features ?? []).map((/** @type {any} */ feature) => feature.attributes);
+		const rows = (data.features ?? []).map((/** @type {any} */ feature) => feature.attributes);
+
+		const missing = REQUIRED_FIELDS.filter((name) => rows[0] && !(name in rows[0]));
+		if (missing.length > 0) {
+			console.warn('[CMS] Table is missing fields the sidebar reads:', missing.join(', '));
+		}
+
+		return rows;
 	} catch (error) {
 		console.warn('[CMS] Failed to load CMS rows:', error);
 		return [];
