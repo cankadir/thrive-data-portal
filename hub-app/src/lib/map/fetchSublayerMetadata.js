@@ -63,12 +63,61 @@ export async function fetchLayerVisualFieldAlias(layerId, options = {}) {
 		const field = (layer.fields ?? []).find(
 			(/** @type {{ name: string }} */ f) => f.name === fieldName
 		);
-		return layer.getFieldAlias?.(fieldName) || field?.alias || fieldName;
+		const configured = layer.getFieldAlias?.(fieldName)?.trim();
+		if (configured && configured !== fieldName) return configured;
+
+		const fieldAlias = field?.alias?.trim();
+		if (fieldAlias && fieldAlias !== fieldName) return fieldAlias;
+
+		// Raster layers are the exception: an ImageServer never lists the
+		// classification field (`ClassName`, `value`) in `fields`, so both lookups
+		// above fail. The only human label Esri publishes is the popup's field
+		// label — prefixed `Raster.ClassName` → "Projected Land Cover". When even
+		// that is absent, return null: a raw column name is worse than no heading.
+		return popupFieldLabel(layer.popupTemplate, fieldName);
 	})();
 
 	visualFieldCache.set(cacheKey, request);
 	return request;
 }
+
+/**
+ * Label the popup config gives a field.
+ *
+ * Two raster quirks: image-service fields are prefixed `Raster.`, and the
+ * renderer's value field is a pseudo-field — `value`/`Value` is exposed to the
+ * popup as `Raster.ServicePixelValue` (which is where the display name is set).
+ * Esri's own placeholder labels there are not headings, so they resolve to null.
+ * @param {any} popupTemplate
+ * @param {string} fieldName
+ */
+function popupFieldLabel(popupTemplate, fieldName) {
+	const infos = popupTemplate?.fieldInfos ?? [];
+	const candidates = [
+		fieldName,
+		`Raster.${fieldName}`,
+		RASTER_POPUP_FIELDS[fieldName.toLowerCase()]
+	].filter(Boolean);
+
+	const match = infos.find((/** @type {{ fieldName: string }} */ info) =>
+		candidates.includes(info.fieldName)
+	);
+	const label = match?.label?.trim();
+	if (!label || label === fieldName) return null;
+	return GENERIC_RASTER_LABELS.has(label.toLowerCase()) ? null : label;
+}
+
+/** Raster renderer fields as they appear in `popupInfo.fieldInfos`. */
+const RASTER_POPUP_FIELDS = {
+	value: 'Raster.ServicePixelValue',
+	count: 'Raster.Count',
+	red: 'Raster.Red',
+	green: 'Raster.Green',
+	blue: 'Raster.Blue'
+};
+
+/** Esri's default raster labels — placeholders, not real headings. */
+const GENERIC_RASTER_LABELS = new Set(['pixel value', 'service pixel value', 'raw pixel value']);
 
 /**
  * Field a renderer is symbolized by. Renderers expose it differently:

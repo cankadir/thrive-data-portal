@@ -137,6 +137,8 @@ async function extractLegend(legendVM, view) {
 			const layerId = info.layer?.id ?? null;
 			let items = await legendFromElements(toArray(info.legendElements));
 
+			items = items.filter((item) => item.label || item.previewHtml);
+
 			if (items.length === 0 && info.layer) {
 				items = await legendFromRenderer(info.layer);
 			}
