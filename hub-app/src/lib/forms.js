@@ -24,10 +24,8 @@
  *                   attachments (resolved in bulk via queryAttachments);
  *                   `truncate: true` gives the cell a wider grid track and folds its
  *                   text over up to two lines before showing an ellipsis.
- *   columnLabels    Optional map of column name → header text (for string columns).
- *   statusField     Legacy single-status shortcut: column name + statusValue/statusStyles/
+ *   statusField     Legacy single-status shortcut: column name + statusStyles/
  *                   emptyStatus. Prefer object columns for new forms.
- *   statusValue     Optional (attrs) => value to derive the status cell for statusField.
  *   statusStyles    Map of raw value → { label, tone } for statusField.
  *   emptyStatus     Tag used when a statusField cell is null/empty.
  *   surveyUrl       Survey123 share URL (no query string).

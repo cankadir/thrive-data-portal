@@ -1,11 +1,15 @@
 <script>
 	import arrowIcon from '$lib/assets/icons/arrow-right.svg';
 	import datasetIcon from '$lib/assets/icons/sector/dataset.svg';
+	import allSectorsIcon from '$lib/assets/icons/sector/all-sectors.svg';
 	import { sectorById } from '$lib/sectors';
 
 	let { tool } = $props();
 
 	const NEUTRAL = { color: '#c0c0b9', hover: '#a5a5a5', icon: datasetIcon };
+	// Multi-sector cards ("All sectors" or 2+ tags) get one shared colour.
+	// Icon is the black Thrive mark: a multi-sector card has no single sector icon.
+	const ALL_SECTORS = { color: '#ffc425', hover: '#ffa600', icon: allSectorsIcon };
 
 	function clean(value) {
 		if (value === null || value === undefined) return '';
@@ -16,9 +20,11 @@
 
 	function sectorId(token) {
 		const t = token.toLowerCase().replace(/[^a-z]+/g, '');
+		if (t.includes('allsector')) return '__all';
 		if (t.includes('natural')) return 'natural-treasures';
 		if (t.includes('community')) return 'community-prosperity';
 		if (t.includes('responsible') || t.includes('growth')) return 'responsible-growth';
+		if (t.includes('built')) return 'transportation-infrastructure';
 		if (t.includes('transport')) return 'transportation-infrastructure';
 		return null;
 	}
@@ -45,13 +51,20 @@
 					)
 				]
 			: [];
-		const sectors = sectorIds.map((id) => sectorById[id]).filter(Boolean);
+		const sectors = sectorIds
+			.filter((id) => id !== '__all')
+			.map((id) => sectorById[id])
+			.filter(Boolean);
+		const multi = sectorIds.includes('__all') || sectors.length > 1;
 
-		const style = sectors[0] ?? NEUTRAL;
+		const style = multi ? ALL_SECTORS : (sectors[0] ?? NEUTRAL);
 		const meta = [
 			{ label: 'Date', value: fmtDate(a.tool_creation_date) },
 			{ label: 'Last updated', value: fmtDate(a.EditDate) },
-			{ label: 'Sector', value: sectors.map((s) => s.label).join(' + ') },
+			{
+				label: 'Sector',
+				value: sectors.length ? sectors.map((s) => s.label).join(' + ') : multi ? 'All sectors' : ''
+			},
 			{ label: 'Author', value: clean(a.author) }
 		].filter((row) => row.value);
 

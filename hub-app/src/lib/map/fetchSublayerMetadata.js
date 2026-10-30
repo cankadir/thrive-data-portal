@@ -15,16 +15,11 @@ import {
 
 /** @typedef {{ title: string | null, description: string | null, source: { text: string, url: string | null } | null, interHub: { name: string, url: string | null } | null }} LayerContent */
 
-const EMPTY = { title: null, description: null, source: null, interHub: null };
-
 /** @param {object} row */
 function contentFromRow(row) {
 	const { source, interHub } = cmsLinks(row);
 	return { title: cmsTitle(row), description: cmsDescription(row), source, interHub };
 }
-
-/** @type {Map<string, Promise<LayerContent>>} */
-const cache = new Map();
 
 /** @type {Map<string, Promise<string | null>>} */
 const visualFieldCache = new Map();
@@ -143,28 +138,6 @@ function resolveRendererField(renderer) {
 }
 
 /**
- * CMS content for one layer: description, source link and inter-hub link.
- * @param {{ mapTitle?: string | null, layerTitle?: string | null }} identity
- * @returns {Promise<LayerContent>}
- */
-export async function fetchLayerContent(identity = {}) {
-	if (!identity.mapTitle || !identity.layerTitle) return EMPTY;
-
-	const cacheKey = `${identity.mapTitle}:${identity.layerTitle}`;
-	if (cache.has(cacheKey)) {
-		return cache.get(cacheKey);
-	}
-
-	const request = (async () => {
-		const row = await matchCmsRow(identity.mapTitle, identity.layerTitle);
-		return row ? contentFromRow(row) : EMPTY;
-	})();
-
-	cache.set(cacheKey, request);
-	return request;
-}
-
-/**
  * Batch CMS content for many layers/groups at once: the table is loaded once
  * (cached in `loadCmsRows`) and matched in memory by title.
  * @param {string | null | undefined} mapTitle
@@ -187,7 +160,6 @@ export async function fetchMapContent(mapTitle, entries) {
 }
 
 export function clearSublayerMetadataCache() {
-	cache.clear();
 	visualFieldCache.clear();
 	clearCmsCache();
 }

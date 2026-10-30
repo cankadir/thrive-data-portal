@@ -310,10 +310,6 @@
 		line-height: 1.625rem;
 	}
 
-	.link {
-		text-decoration: underline;
-	}
-
 	/* Go-to arrow button */
 	.go-btn {
 		position: relative;

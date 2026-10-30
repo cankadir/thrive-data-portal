@@ -128,9 +128,7 @@ export async function load({ params, fetch }) {
 					if (column.attachments) return attachedOids.has(attrs[form.objectIdField]) ? 'yes' : 'no';
 					return column.value ? column.value(attrs) : (attrs[column.name] ?? '');
 				}
-				return column === form.statusField && form.statusValue
-					? form.statusValue(attrs)
-					: (attrs[column] ?? '');
+				return attrs[column] ?? '';
 			}),
 			editUrl: surveyEditUrl(form, globalId),
 			photosUrl: form.attachments ? `/forms/${params.slug}/photos/${globalId}` : null
@@ -160,7 +158,7 @@ export async function load({ params, fetch }) {
 						label: column.label ?? column.name.replaceAll('_', ' '),
 						truncate: column.truncate ?? false
 					}
-				: { name: column, label: form.columnLabels?.[column] ?? column.replaceAll('_', ' ') }
+				: { name: column, label: column.replaceAll('_', ' ') }
 		),
 		statusConfig,
 		hasAttachments: Boolean(form.attachments),
